@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zaiko - 在庫・購入日記録</title>
+  <link rel="stylesheet" href="./src/style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "preact": "https://esm.sh/preact@10.20.1",
+        "preact/hooks": "https://esm.sh/preact@10.20.1/hooks",
+        "htm": "https://esm.sh/htm@3.1.1"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="module">
+    import { h, render } from 'preact';
+    import { useState, useEffect, useMemo } from 'preact/hooks';
+    import htm from 'htm';
+
+    const html = htm.bind(h);
+
+    /* --- DATE UTILS --- */
+    function getTodayString() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function parseDate(dateStr) {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '未記録';
+      const [y, m, d] = dateStr.split('-');
+      return `${y}/${m}/${d}`;
+    }
+
+    function getRelativeDateString(dateStr) {
+      if (!dateStr) return '未記録';
+      const target = parseDate(dateStr);
+      const today = parseDate(getTodayString());
+
+      const diffMs = today.getTime() - target.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 0) return '今日';
+      if (diffDays === 1) return '昨日';
+      if (diffDays > 1 && diffDays < 7) return `${diffDays}日前`;
+      if (diffDays >= 7 && diffDays < 30) {
+        const weeks = Math.floor(diffDays / 7);
+        return `${weeks}週間前`;
+      }
+      if (diffDays >= 30 && diffDays < 365) {
+        const months = Math.floor(diffDays / 30);
+        return `${months}か月前`;
+      }
+      if (diffDays >= 365) {
+        return formatDate(dateStr);
+      }
+      return `${Math.abs(diffDays)}日後`;
+    }
+
+    /* --- STORAGE & DATA --- */
+    const STORAGE_KEY = 'zaiko_minimal_items_v2';
+
+    const SAMPLE_ITEMS = [
+      {
+        id: 'item-1',
+        name: 'トイレットペーパー',
+        purchaseHistory: [
+          { id: 'rec-1-1', date: '2026-10-24' },
+          { id: 'rec-1-2', date: '2026-09-28' },
+          { id: 'rec-1-3', date: '2026-09-02' }
+        ],
+        createdAt: '2026-09-01T09:00:00Z',
+        updatedAt: '2026-10-24T10:00:00Z'
+      },
+      {
+        id: 'item-2',
+        name: '食器用洗剤',
+        purchaseHistory: [
+          { id: 'rec-2-1', date: '2026-10-18' },
+          { id: 'rec-2-2', date: '2026-08-30' }
+        ],
+        createdAt: '2026-08-30T11:00:00Z',
+        updatedAt: '2026-10-18T16:20:00Z'
+      },
+      {
+        id: 'item-3',
+        name: 'コーヒー豆',
+        purchaseHistory: [
+          { id: 'rec-3-1', date: '2026-10-10' },
+          { id: 'rec-3-2', date: '2026-09-15' },
+          { id: 'rec-3-3', date: '2026-08-20' }
+        ],
+        createdAt: '2026-08-20T17:00:00Z',
+        updatedAt: '2026-10-10T12:00:00Z'
+      },
+      {
+        id: 'item-4',
+        name: '洗濯洗剤',
+        purchaseHistory: [
+          { id: 'rec-4-1', date: '2026-09-10' }
+        ],
+        createdAt: '2026-09-10T08:00:00Z',
+        updatedAt: '2026-09-10T08:00:00Z'
+      },
+      {
+        id: 'item-5',
+        name: 'オリーブオイル',
+        purchaseHistory: [
+          { id: 'rec-5-1', date: '2026-08-15' }
+        ],
+        createdAt: '2026-08-15T14:00:00Z',
+        updatedAt: '2026-08-15T14:00:00Z'
+      },
+      {
+        id: 'item-6',
+        name: '目薬',
+        purchaseHistory: [
+          { id: 'rec-6-1', date: '2026-09-25' }
+        ],
+        createdAt: '2026-09-25T19:00:00Z',
+        updatedAt: '2026-09-25T19:00:00Z'
+      }
+    ];
+
+    function generateId() {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+      }
+      return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 9);
+    }
+
+    function loadItems() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          saveItems(SAMPLE_ITEMS);
+          return SAMPLE_ITEMS;
+        }
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : SAMPLE_ITEMS;
+      } catch {
+        return SAMPLE_ITEMS;
+      }
+    }
+
+    function saveItems(items) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    /* --- COMPONENTS --- */
+
+    // Header
+    function Header({ searchQuery, onSearchChange, onOpenNewModal, onResetSample }) {
+      return html`
+        <header class="app-header">
+          <div class="brand">
+            <span>✉️</span>
+            <span>Zaiko</span>
+          </div>
+
+          <div class="search-box">
+            <span style="color: var(--text-muted); font-size: 14px;">🔍</span>
+            <input
+              type="text"
+              class="search-input"
+              placeholder="アイテムを検索..."
+              value=${searchQuery}
+              onInput=${(e) => onSearchChange(e.target.value)}
+            />
+            ${searchQuery && html`
+              <button
+                style="background: transparent; border: none; cursor: pointer; color: var(--text-muted);"
+                onClick=${() => onSearchChange('')}
+              >
+                ✕
+              </button>
+            `}
+          </div>
+
+          <div class="header-right">
+            <button class="btn-tool" onClick=${onResetSample} title="初期サンプルデータを復元">
+              <span>🔄</span>
+              <span>サンプル</span>
+            </button>
+            <button class="btn-add-item" onClick=${onOpenNewModal}>
+              <span>＋</span>
+              <span>アイテム追加</span>
+            </button>
+          </div>
+        </header>
+      `;
+    }
+
+    // ItemList (Left Pane)
+    function ItemList({
+      items,
+      selectedIds,
+      activeId,
+      filter,
+      onSelectItem,
+      onToggleCheck,
+      onToggleSelectAll,
+      onBatchToday,
+      onOpenBatchDate,
+      onBatchDelete,
+      onSortChange
+    }) {
+      const isAllSelected = items.length > 0 && items.every(i => selectedIds.has(i.id));
+      const hasSelection = selectedIds.size > 0;
+
+      return html`
+        <section class="list-pane">
+          <div class="toolbar-mailer">
+            <div class="toolbar-actions">
+              <input
+                type="checkbox"
+                class="item-checkbox"
+                checked=${isAllSelected}
+                onChange=${onToggleSelectAll}
+                title=${isAllSelected ? '全選択を解除' : 'すべて選択'}
+              />
+
+              ${hasSelection ? html`
+                <span style="font-size: 12px; font-weight: 600; color: var(--primary); margin: 0 4px;">
+                  ${selectedIds.size} 件
+                </span>
+
+                <button
+                  class="btn-tool btn-tool-primary"
+                  onClick=${onBatchToday}
+                  title="選択したアイテムの購入日を今日として一括記録"
+                >
+                  <span>⚡ 今日購入</span>
+                </button>
+
+                <button
+                  class="btn-tool"
+                  onClick=${onOpenBatchDate}
+                  title="日付を指定して一括記録"
+                >
+                  <span>📅 日付指定...</span>
+                </button>
+
+                <button
+                  class="btn-tool"
+                  style="color: var(--danger);"
+                  onClick=${onBatchDelete}
+                  title="選択したアイテムを削除"
+                >
+                  <span>🗑️ 削除</span>
+                </button>
+              ` : html`
+                <span style="font-size: 12px; color: var(--text-secondary); margin-left: 6px;">
+                  ${items.length} 件
+                </span>
+              `}
+            </div>
+
+            <div>
+              <select
+                class="sort-select"
+                value=${filter.sortBy}
+                onChange=${(e) => onSortChange(e.target.value)}
+              >
+                <option value="lastPurchaseDesc">購入日: 新しい順</option>
+                <option value="lastPurchaseAsc">購入日: 古い順</option>
+                <option value="nameAsc">名前順</option>
+                <option value="historyCountDesc">購入回数順</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="items-scroll">
+            ${items.length === 0 ? html`
+              <div style="padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 13px;">
+                アイテムがありません
+              </div>
+            ` : items.map(item => {
+              const isChecked = selectedIds.has(item.id);
+              const isActive = item.id === activeId;
+              const latest = item.purchaseHistory[0];
+              const relDate = latest ? getRelativeDateString(latest.date) : '未購入';
+              const isToday = relDate === '今日';
+
+              return html`
+                <div
+                  key=${item.id}
+                  class="item-row ${isChecked ? 'selected' : ''} ${isActive ? 'active' : ''}"
+                  onClick=${() => onSelectItem(item.id)}
+                >
+                  <div onClick=${(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      class="item-checkbox"
+                      checked=${isChecked}
+                      onChange=${(e) => onToggleCheck(item.id, e.target.checked)}
+                    />
+                  </div>
+
+                  <div class="item-info">
+                    <span class="item-name" title=${item.name}>${item.name}</span>
+                    <div class="item-dates-meta">
+                      <span class="date-relative ${isToday ? 'today' : ''}">
+                        ${relDate}
+                      </span>
+                      <span class="count-chip">${item.purchaseHistory.length}回</span>
+                    </div>
+                  </div>
+                </div>
+              `;
+            })}
+          </div>
+        </section>
+      `;
+    }
+
+    // ItemDetail (Right Pane)
+    function ItemDetail({
+      item,
+      onRecordToday,
+      onAddDate,
+      onDeleteRecord,
+      onDeleteItem
+    }) {
+      const [showAddInput, setShowAddInput] = useState(false);
+      const [inputDate, setInputDate] = useState(getTodayString());
+
+      if (!item) {
+        return html`
+          <main class="detail-pane">
+            <div class="detail-empty">
+              <span style="font-size: 32px;">✉️</span>
+              <div>アイテムを選択してください</div>
+            </div>
+          </main>
+        `;
+      }
+
+      const latest = item.purchaseHistory[0];
+
+      const handleAddSubmit = (e) => {
+        e.preventDefault();
+        if (!inputDate) return;
+        onAddDate(item.id, inputDate);
+        setShowAddInput(false);
+      };
+
+      return html`
+        <main class="detail-pane">
+          <div class="detail-header">
+            <h2 class="detail-title">${item.name}</h2>
+            <div class="detail-top-actions">
+              <button
+                class="btn-detail btn-detail-primary"
+                onClick=${() => onRecordToday(item.id)}
+                title="今日を購入日として記録"
+              >
+                <span>⚡ 今日購入を記録</span>
+              </button>
+              <button
+                class="btn-detail"
+                onClick=${() => setShowAddInput(!showAddInput)}
+                title="日付を指定して履歴を追加"
+              >
+                <span>📅 日付を追加</span>
+              </button>
+              <button
+                class="btn-detail"
+                style="color: var(--danger); border-color: #fad2cf;"
+                onClick=${() => onDeleteItem(item.id)}
+                title="このアイテムを削除"
+              >
+                <span>🗑️ 削除</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="detail-content">
+            <div class="status-banner">
+              <div>
+                <div class="status-label">最新の購入日</div>
+                <div class="status-value">
+                  ${latest ? `${formatDate(latest.date)} (${getRelativeDateString(latest.date)})` : '未記録'}
+                </div>
+              </div>
+              <div>
+                <div class="status-label">記録された購入回数</div>
+                <div class="status-value" style="text-align: right;">
+                  ${item.purchaseHistory.length} 回
+                </div>
+              </div>
+            </div>
+
+            ${showAddInput && html`
+              <form class="add-date-box" onSubmit=${handleAddSubmit}>
+                <span style="font-size: 13px; font-weight: 500;">購入日を追加:</span>
+                <input
+                  type="date"
+                  class="input-date"
+                  value=${inputDate}
+                  required
+                  onInput=${(e) => setInputDate(e.target.value)}
+                />
+                <button
+                  type="submit"
+                  class="btn-detail btn-detail-primary"
+                  style="padding: 5px 12px;"
+                >
+                  追加
+                </button>
+                <button
+                  type="button"
+                  class="btn-detail"
+                  style="padding: 5px 10px;"
+                  onClick=${() => setShowAddInput(false)}
+                >
+                  キャンセル
+                </button>
+              </form>
+            `}
+
+            <div>
+              <div class="history-title-row">
+                <span class="history-heading">購入日履歴</span>
+              </div>
+
+              ${item.purchaseHistory.length === 0 ? html`
+                <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">
+                  購入履歴はまだありません。「⚡ 今日購入を記録」を押して記録できます。
+                </div>
+              ` : html`
+                <div class="history-list">
+                  ${item.purchaseHistory.map(record => html`
+                    <div key=${record.id} class="history-row">
+                      <div>
+                        <span class="history-date">${formatDate(record.date)}</span>
+                        <span class="history-rel">${getRelativeDateString(record.date)}</span>
+                      </div>
+                      <button
+                        class="btn-del-date"
+                        title="この購入日を削除"
+                        onClick=${() => onDeleteRecord(item.id, record.id)}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  `)}
+                </div>
+              `}
+            </div>
+          </div>
+        </main>
+      `;
+    }
+
+    // NewItemModal
+    function NewItemModal({ isOpen, onClose, onSubmit }) {
+      if (!isOpen) return null;
+      const [name, setName] = useState('');
+      const [recordInitial, setRecordInitial] = useState(true);
+      const [purchaseDate, setPurchaseDate] = useState(getTodayString());
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!name.trim()) return;
+        onSubmit({
+          name: name.trim(),
+          initialPurchaseDate: recordInitial ? purchaseDate : undefined
+        });
+        onClose();
+      };
+
+      return html`
+        <div class="modal-overlay" onClick=${onClose}>
+          <div class="modal-box" onClick=${(e) => e.stopPropagation()}>
+            <div class="modal-header">
+              <span>アイテムを追加</span>
+              <button
+                style="background: transparent; border: none; cursor: pointer; font-size: 16px;"
+                onClick=${onClose}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit=${handleSubmit}>
+              <div class="modal-body">
+                <div>
+                  <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 6px;">
+                    アイテム名 *
+                  </label>
+                  <input
+                    type="text"
+                    class="form-input"
+                    placeholder="例: シャンプー、コーヒー豆"
+                    value=${name}
+                    required
+                    autoFocus
+                    onInput=${(e) => setName(e.target.value)}
+                  />
+                </div>
+
+                <div style="padding: 10px; background: #f8f9fa; border-radius: 6px; border: 1px solid var(--border-light);">
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                    <input
+                      type="checkbox"
+                      class="item-checkbox"
+                      checked=${recordInitial}
+                      onChange=${(e) => setRecordInitial(e.target.checked)}
+                    />
+                    <span>初回の購入日も記録する</span>
+                  </label>
+
+                  ${recordInitial && html`
+                    <div style="margin-top: 8px;">
+                      <input
+                        type="date"
+                        class="form-input"
+                        value=${purchaseDate}
+                        onInput=${(e) => setPurchaseDate(e.target.value)}
+                      />
+                    </div>
+                  `}
+                </div>
+              </div>
+
+              <div class="modal-footer">
+                <button type="button" class="btn-detail" onClick=${onClose}>
+                  キャンセル
+                </button>
+                <button type="submit" class="btn-detail btn-detail-primary">
+                  追加
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+    }
+
+    // BatchDateModal
+    function BatchDateModal({ isOpen, selectedItems, onClose, onSubmit }) {
+      if (!isOpen) return null;
+      const [date, setDate] = useState(getTodayString());
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!date) return;
+        onSubmit(date);
+        onClose();
+      };
+
+      return html`
+        <div class="modal-overlay" onClick=${onClose}>
+          <div class="modal-box" onClick=${(e) => e.stopPropagation()}>
+            <div class="modal-header">
+              <span>日付を指定して一括記録</span>
+              <button
+                style="background: transparent; border: none; cursor: pointer; font-size: 16px;"
+                onClick=${onClose}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit=${handleSubmit}>
+              <div class="modal-body">
+                <div style="font-size: 13px; color: var(--text-secondary);">
+                  選択した <strong>${selectedItems.length} 件</strong> のアイテムに購入日をまとめて記録します。
+                </div>
+
+                <div style="display: flex; flex-wrap: wrap; gap: 4px; max-height: 80px; overflow-y: auto;">
+                  ${selectedItems.map(item => html`
+                    <span style="font-size: 11px; background: #e8f0fe; color: #1967d2; padding: 2px 6px; border-radius: 4px;">
+                      ${item.name}
+                    </span>
+                  `)}
+                </div>
+
+                <div>
+                  <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 6px;">
+                    購入日 *
+                  </label>
+                  <input
+                    type="date"
+                    class="form-input"
+                    value=${date}
+                    required
+                    onInput=${(e) => setDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div class="modal-footer">
+                <button type="button" class="btn-detail" onClick=${onClose}>
+                  キャンセル
+                </button>
+                <button type="submit" class="btn-detail btn-detail-primary">
+                  一括記録
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+    }
+
+    // App Root
+    function App() {
+      const [items, setItems] = useState([]);
+      const [selectedIds, setSelectedIds] = useState(new Set());
+      const [activeId, setActiveId] = useState(null);
+      const [toastMessage, setToastMessage] = useState(null);
+
+      const [filter, setFilter] = useState({
+        searchQuery: '',
+        sortBy: 'lastPurchaseDesc'
+      });
+
+      const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+      const [isBatchDateModalOpen, setIsBatchDateModalOpen] = useState(false);
+
+      useEffect(() => {
+        const loaded = loadItems();
+        setItems(loaded);
+        if (loaded.length > 0) {
+          setActiveId(loaded[0].id);
+        }
+      }, []);
+
+      const showToast = (msg) => {
+        setToastMessage(msg);
+        setTimeout(() => {
+          setToastMessage((cur) => (cur === msg ? null : cur));
+        }, 2800);
+      };
+
+      const filteredItems = useMemo(() => {
+        let result = [...items];
+        if (filter.searchQuery.trim()) {
+          const q = filter.searchQuery.toLowerCase();
+          result = result.filter(item => item.name.toLowerCase().includes(q));
+        }
+
+        result.sort((a, b) => {
+          if (filter.sortBy === 'nameAsc') return a.name.localeCompare(b.name, 'ja');
+          if (filter.sortBy === 'historyCountDesc') return b.purchaseHistory.length - a.purchaseHistory.length;
+          const dateA = a.purchaseHistory[0]?.date || '';
+          const dateB = b.purchaseHistory[0]?.date || '';
+          if (filter.sortBy === 'lastPurchaseAsc') {
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+            return dateA.localeCompare(dateB);
+          }
+          if (!dateA) return 1;
+          if (!dateB) return -1;
+          return dateB.localeCompare(dateA);
+        });
+
+        return result;
+      }, [items, filter]);
+
+      const activeItem = useMemo(() => {
+        return items.find(i => i.id === activeId) || null;
+      }, [items, activeId]);
+
+      const handleToggleCheck = (id, checked) => {
+        setSelectedIds(prev => {
+          const next = new Set(prev);
+          if (checked) next.add(id);
+          else next.delete(id);
+          return next;
+        });
+      };
+
+      const handleToggleSelectAll = () => {
+        const isAll = filteredItems.length > 0 && filteredItems.every(i => selectedIds.has(i.id));
+        if (isAll) {
+          setSelectedIds(new Set());
+        } else {
+          const next = new Set(selectedIds);
+          filteredItems.forEach(i => next.add(i.id));
+          setSelectedIds(next);
+        }
+      };
+
+      // 複数アイテムに「今日」を一括記録
+      const handleBatchToday = () => {
+        const ids = Array.from(selectedIds);
+        if (ids.length === 0) return;
+        const today = getTodayString();
+        const idSet = new Set(ids);
+
+        const nextItems = items.map(item => {
+          if (idSet.has(item.id)) {
+            const history = [{ id: generateId(), date: today }, ...item.purchaseHistory]
+              .sort((a, b) => b.date.localeCompare(a.date));
+            return { ...item, purchaseHistory: history, updatedAt: new Date().toISOString() };
+          }
+          return item;
+        });
+
+        saveItems(nextItems);
+        setItems(nextItems);
+        setSelectedIds(new Set());
+        showToast(`⚡ ${ids.length} 件のアイテムの購入日を今日で記録しました`);
+      };
+
+      // 複数アイテムに「指定日」を一括記録
+      const handleBatchCustomDate = (date) => {
+        const ids = Array.from(selectedIds);
+        if (ids.length === 0) return;
+        const idSet = new Set(ids);
+
+        const nextItems = items.map(item => {
+          if (idSet.has(item.id)) {
+            const history = [{ id: generateId(), date }, ...item.purchaseHistory]
+              .sort((a, b) => b.date.localeCompare(a.date));
+            return { ...item, purchaseHistory: history, updatedAt: new Date().toISOString() };
+          }
+          return item;
+        });
+
+        saveItems(nextItems);
+        setItems(nextItems);
+        setSelectedIds(new Set());
+        showToast(`📅 ${ids.length} 件のアイテムの購入日 (${date}) を一括記録しました`);
+      };
+
+      // 複数アイテム一括削除
+      const handleBatchDelete = () => {
+        const ids = Array.from(selectedIds);
+        if (ids.length === 0) return;
+        if (!confirm(`選択した ${ids.length} 件のアイテムを削除しますか？`)) return;
+
+        const idSet = new Set(ids);
+        const nextItems = items.filter(item => !idSet.has(item.id));
+        saveItems(nextItems);
+        setItems(nextItems);
+        setSelectedIds(new Set());
+        if (activeId && idSet.has(activeId)) {
+          setActiveId(nextItems[0]?.id || null);
+        }
+        showToast(`${ids.length} 件のアイテムを削除しました`);
+      };
+
+      // 単一アイテム今日記録
+      const handleRecordToday = (itemId) => {
+        const today = getTodayString();
+        const nextItems = items.map(item => {
+          if (item.id === itemId) {
+            const history = [{ id: generateId(), date: today }, ...item.purchaseHistory]
+              .sort((a, b) => b.date.localeCompare(a.date));
+            return { ...item, purchaseHistory: history, updatedAt: new Date().toISOString() };
+          }
+          return item;
+        });
+        saveItems(nextItems);
+        setItems(nextItems);
+        const target = items.find(i => i.id === itemId);
+        showToast(`⚡ 「${target?.name}」の購入日を今日で記録しました`);
+      };
+
+      // 単一アイテム日付追加
+      const handleAddDate = (itemId, date) => {
+        const nextItems = items.map(item => {
+          if (item.id === itemId) {
+            const history = [{ id: generateId(), date }, ...item.purchaseHistory]
+              .sort((a, b) => b.date.localeCompare(a.date));
+            return { ...item, purchaseHistory: history, updatedAt: new Date().toISOString() };
+          }
+          return item;
+        });
+        saveItems(nextItems);
+        setItems(nextItems);
+        showToast(`📅 購入日 (${date}) を追加しました`);
+      };
+
+      // 購入日履歴個別削除
+      const handleDeleteRecord = (itemId, recordId) => {
+        if (!confirm('この購入日を削除しますか？')) return;
+        const nextItems = items.map(item => {
+          if (item.id === itemId) {
+            return {
+              ...item,
+              purchaseHistory: item.purchaseHistory.filter(r => r.id !== recordId),
+              updatedAt: new Date().toISOString()
+            };
+          }
+          return item;
+        });
+        saveItems(nextItems);
+        setItems(nextItems);
+        showToast('購入日を削除しました');
+      };
+
+      // アイテム新規追加
+      const handleCreateNewItem = (input) => {
+        const now = new Date().toISOString();
+        const history = [];
+        if (input.initialPurchaseDate) {
+          history.push({ id: generateId(), date: input.initialPurchaseDate });
+        }
+        const newItem = {
+          id: generateId(),
+          name: input.name,
+          purchaseHistory: history,
+          createdAt: now,
+          updatedAt: now
+        };
+        const nextItems = [newItem, ...items];
+        saveItems(nextItems);
+        setItems(nextItems);
+        setActiveId(newItem.id);
+        showToast(`「${newItem.name}」を追加しました`);
+      };
+
+      // 単一アイテム削除
+      const handleDeleteItem = (itemId) => {
+        const target = items.find(i => i.id === itemId);
+        if (!confirm(`「${target?.name}」を削除しますか？`)) return;
+
+        const nextItems = items.filter(i => i.id !== itemId);
+        saveItems(nextItems);
+        setItems(nextItems);
+        setSelectedIds(prev => {
+          const next = new Set(prev);
+          next.delete(itemId);
+          return next;
+        });
+        setActiveId(nextItems[0]?.id || null);
+        showToast('アイテムを削除しました');
+      };
+
+      // サンプル復元
+      const handleResetSample = () => {
+        if (!confirm('初期サンプルデータにリセットしますか？')) return;
+        saveItems(SAMPLE_ITEMS);
+        setItems(SAMPLE_ITEMS);
+        setSelectedIds(new Set());
+        setActiveId(SAMPLE_ITEMS[0]?.id || null);
+        showToast('サンプルデータを復元しました');
+      };
+
+      return html`
+        <div id="app">
+          <${Header}
+            searchQuery=${filter.searchQuery}
+            onSearchChange=${(q) => setFilter(prev => ({ ...prev, searchQuery: q }))}
+            onOpenNewModal=${() => setIsNewModalOpen(true)}
+            onResetSample=${handleResetSample}
+          />
+
+          <div class="main-container">
+            <${ItemList}
+              items=${filteredItems}
+              selectedIds=${selectedIds}
+              activeId=${activeId}
+              filter=${filter}
+              onSelectItem=${(id) => setActiveId(id)}
+              onToggleCheck=${handleToggleCheck}
+              onToggleSelectAll=${handleToggleSelectAll}
+              onBatchToday=${handleBatchToday}
+              onOpenBatchDate=${() => setIsBatchDateModalOpen(true)}
+              onBatchDelete=${handleBatchDelete}
+              onSortChange=${(sortBy) => setFilter(prev => ({ ...prev, sortBy }))}
+            />
+
+            <${ItemDetail}
+              item=${activeItem}
+              onRecordToday=${handleRecordToday}
+              onAddDate=${handleAddDate}
+              onDeleteRecord=${handleDeleteRecord}
+              onDeleteItem=${handleDeleteItem}
+            />
+          </div>
+
+          <${NewItemModal}
+            isOpen=${isNewModalOpen}
+            onClose=${() => setIsNewModalOpen(false)}
+            onSubmit=${handleCreateNewItem}
+          />
+
+          <${BatchDateModal}
+            isOpen=${isBatchDateModalOpen}
+            selectedItems=${items.filter(i => selectedIds.has(i.id))}
+            onClose=${() => setIsBatchDateModalOpen(false)}
+            onSubmit=${handleBatchCustomDate}
+          />
+
+          ${toastMessage && html`
+            <div class="toast">
+              ${toastMessage}
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    render(h(App, null), document.getElementById('root'));
+  </script>
+</body>
+</html>
