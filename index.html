@@ -997,7 +997,7 @@
               searchQuery=${filter.searchQuery}
               sortBy=${filter.sortBy}
               onSearchChange=${(q) => setFilter(prev => ({ ...prev, searchQuery: q }))}
-              onSortChange={(sortBy) => setFilter(prev => ({ ...prev, sortBy }))}
+              onSortChange=${(sortBy) => setFilter(prev => ({ ...prev, sortBy }))}
               onSelectItem=${handleSelectItem}
               onToggleCheck=${handleToggleCheck}
               onToggleSelectAll=${handleToggleSelectAll}
