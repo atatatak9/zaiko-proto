@@ -8,105 +8,95 @@ const html = htm.bind(h);
 interface ItemListProps {
   items: InventoryItem[];
   selectedIds: Set<string>;
-  activeId: string | null;
-  filter: FilterState;
+  searchQuery: string;
+  sortBy: FilterState['sortBy'];
+  onSearchChange: (q: string) => void;
+  onSortChange: (sort: FilterState['sortBy']) => void;
   onSelectItem: (id: string) => void;
   onToggleCheck: (id: string, checked: boolean) => void;
   onToggleSelectAll: () => void;
+  onOpenNewModal: () => void;
   onBatchToday: () => void;
   onOpenBatchDate: () => void;
   onBatchDelete: () => void;
-  onSortChange: (sort: FilterState['sortBy']) => void;
 }
 
 export function ItemList({
   items,
   selectedIds,
-  activeId,
-  filter,
+  searchQuery,
+  sortBy,
+  onSearchChange,
+  onSortChange,
   onSelectItem,
   onToggleCheck,
   onToggleSelectAll,
+  onOpenNewModal,
   onBatchToday,
   onOpenBatchDate,
-  onBatchDelete,
-  onSortChange
+  onBatchDelete
 }: ItemListProps) {
   const isAllSelected = items.length > 0 && items.every(i => selectedIds.has(i.id));
   const hasSelection = selectedIds.size > 0;
 
   return html`
-    <section class="list-pane">
-      <!-- Mailer-style Toolbar -->
-      <div class="toolbar-mailer">
-        <div class="toolbar-actions">
+    <div class="view-container">
+      <!-- Search Bar -->
+      <div class="mobile-search-strip">
+        <div class="search-pill">
+          <span style="color: var(--text-muted); font-size: 15px;">🔍</span>
           <input
-            type="checkbox"
-            class="item-checkbox"
-            checked=${isAllSelected}
-            onChange=${onToggleSelectAll}
-            title=${isAllSelected ? '全選択を解除' : 'すべて選択'}
+            type="text"
+            class="search-pill-input"
+            placeholder="アイテムを検索..."
+            value=${searchQuery}
+            onInput=${(e: any) => onSearchChange(e.target.value)}
           />
-
-          ${hasSelection ? html`
-            <span style="font-size: 12px; font-weight: 600; color: var(--primary); margin: 0 4px;">
-              ${selectedIds.size} 件
-            </span>
-
+          ${searchQuery && html`
             <button
-              class="btn-tool btn-tool-primary"
-              onClick=${onBatchToday}
-              title="選択したアイテムの購入日を今日として一括記録"
+              style="background: transparent; border: none; font-size: 14px; color: var(--text-muted); cursor: pointer;"
+              onClick=${() => onSearchChange('')}
             >
-              <span>⚡ 今日購入</span>
+              ✕
             </button>
-
-            <button
-              class="btn-tool"
-              onClick=${onOpenBatchDate}
-              title="日付を指定して一括記録"
-            >
-              <span>📅 日付指定...</span>
-            </button>
-
-            <button
-              class="btn-tool"
-              style="color: var(--danger);"
-              onClick=${onBatchDelete}
-              title="選択したアイテムを削除"
-            >
-              <span>🗑️ 削除</span>
-            </button>
-          ` : html`
-            <span style="font-size: 12px; color: var(--text-secondary); margin-left: 6px;">
-              ${items.length} 件
-            </span>
           `}
-        </div>
-
-        <div>
-          <select
-            class="sort-select"
-            value=${filter.sortBy}
-            onChange=${(e: any) => onSortChange(e.target.value)}
-          >
-            <option value="lastPurchaseDesc">購入日: 新しい順</option>
-            <option value="lastPurchaseAsc">購入日: 古い順</option>
-            <option value="nameAsc">名前順</option>
-            <option value="historyCountDesc">購入回数順</option>
-          </select>
         </div>
       </div>
 
-      <!-- Item Rows -->
-      <div class="items-scroll">
+      <!-- Subheader: Select all & Sort -->
+      <div class="list-subheader">
+        <label class="select-all-label">
+          <input
+            type="checkbox"
+            class="checkbox-mobile"
+            checked=${isAllSelected}
+            onChange=${onToggleSelectAll}
+          />
+          <span>${hasSelection ? `${selectedIds.size} 件選択中` : `すべて (${items.length})`}</span>
+        </label>
+
+        <select
+          class="sort-select-mobile"
+          value=${sortBy}
+          onChange=${(e: any) => onSortChange(e.target.value)}
+        >
+          <option value="lastPurchaseDesc">購入日: 新しい順</option>
+          <option value="lastPurchaseAsc">購入日: 古い順</option>
+          <option value="nameAsc">名前順</option>
+          <option value="historyCountDesc">購入回数順</option>
+        </select>
+      </div>
+
+      <!-- Scrollable List -->
+      <div class="items-list-scroll">
         ${items.length === 0 ? html`
-          <div style="padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 13px;">
-            アイテムがありません
+          <div style="padding: 60px 20px; text-align: center; color: var(--text-muted);">
+            <div style="font-size: 32px; margin-bottom: 8px;">📭</div>
+            <div style="font-size: 15px; font-weight: 500;">アイテムがありません</div>
+            <div style="font-size: 12.5px; margin-top: 4px;">右下のボタンから追加してください</div>
           </div>
         ` : items.map(item => {
           const isChecked = selectedIds.has(item.id);
-          const isActive = item.id === activeId;
           const latest = item.purchaseHistory[0];
           const relDate = latest ? getRelativeDateString(latest.date) : '未購入';
           const isToday = relDate === '今日';
@@ -114,31 +104,87 @@ export function ItemList({
           return html`
             <div
               key=${item.id}
-              class="item-row ${isChecked ? 'selected' : ''} ${isActive ? 'active' : ''}"
+              class="mobile-item-card ${isChecked ? 'checked' : ''}"
               onClick=${() => onSelectItem(item.id)}
             >
-              <div onClick=${(e: MouseEvent) => e.stopPropagation()}>
+              <!-- Checkbox (Hit area enlarged) -->
+              <div
+                class="item-check-hitarea"
+                onClick=${(e: MouseEvent) => {
+                  e.stopPropagation();
+                  onToggleCheck(item.id, !isChecked);
+                }}
+              >
                 <input
                   type="checkbox"
-                  class="item-checkbox"
+                  class="checkbox-mobile"
                   checked=${isChecked}
-                  onChange=${(e: any) => onToggleCheck(item.id, e.target.checked)}
+                  readOnly
                 />
               </div>
 
-              <div class="item-info">
-                <span class="item-name" title=${item.name}>${item.name}</span>
-                <div class="item-dates-meta">
-                  <span class="date-relative ${isToday ? 'today' : ''}">
+              <!-- Main Card Body -->
+              <div class="item-card-main">
+                <div class="item-card-row-top">
+                  <span class="item-card-title">${item.name}</span>
+                  <span class="item-card-date ${isToday ? 'is-today' : ''}">
                     ${relDate}
                   </span>
-                  <span class="count-chip">${item.purchaseHistory.length}回</span>
+                </div>
+                <div class="item-card-sub">
+                  <span class="chip-history-count">${item.purchaseHistory.length}回購入</span>
+                  ${latest ? html`<span>最終: ${latest.date}</span>` : null}
                 </div>
               </div>
+
+              <span class="item-card-arrow">›</span>
             </div>
           `;
         })}
       </div>
-    </section>
+
+      <!-- Floating Action Button (FAB) -->
+      ${!hasSelection && html`
+        <button class="fab-add" onClick=${onOpenNewModal}>
+          <span style="font-size: 20px;">＋</span>
+          <span>アイテム追加</span>
+        </button>
+      `}
+
+      <!-- Bottom Batch Action Bar (Appears when items are checked) -->
+      ${hasSelection && html`
+        <div class="bottom-batch-bar">
+          <span class="batch-count-badge">
+            ${selectedIds.size} 件選択中
+          </span>
+
+          <div class="batch-actions-group">
+            <button
+              class="btn-batch-action primary"
+              onClick=${onBatchToday}
+              title="今日購入として記録"
+            >
+              <span>⚡ 今日</span>
+            </button>
+
+            <button
+              class="btn-batch-action"
+              onClick=${onOpenBatchDate}
+              title="日付を指定して記録"
+            >
+              <span>📅 日付</span>
+            </button>
+
+            <button
+              class="btn-batch-action danger"
+              onClick=${onBatchDelete}
+              title="選択したアイテムを削除"
+            >
+              <span>🗑️</span>
+            </button>
+          </div>
+        </div>
+      `}
+    </div>
   `;
 }

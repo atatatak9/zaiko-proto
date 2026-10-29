@@ -2,8 +2,8 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Zaiko - 在庫・購入日記録</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Zaiko - モバイル在庫・購入記録</title>
   <link rel="stylesheet" href="./src/style.css">
   <script type="importmap">
     {
@@ -167,134 +167,129 @@
     /* --- COMPONENTS --- */
 
     // Header
-    function Header({ searchQuery, onSearchChange, onOpenNewModal, onResetSample }) {
-      return html`
-        <header class="app-header">
-          <div class="brand">
-            <span>✉️</span>
-            <span>Zaiko</span>
-          </div>
-
-          <div class="search-box">
-            <span style="color: var(--text-muted); font-size: 14px;">🔍</span>
-            <input
-              type="text"
-              class="search-input"
-              placeholder="アイテムを検索..."
-              value=${searchQuery}
-              onInput=${(e) => onSearchChange(e.target.value)}
-            />
-            ${searchQuery && html`
-              <button
-                style="background: transparent; border: none; cursor: pointer; color: var(--text-muted);"
-                onClick=${() => onSearchChange('')}
-              >
-                ✕
+    function Header({ currentView, activeItemName, onBackToList, onResetSample, onDeleteItem }) {
+      if (currentView === 'detail') {
+        return html`
+          <header class="mobile-appbar">
+            <div class="appbar-left">
+              <button class="btn-icon-mobile" onClick=${onBackToList} title="一覧に戻る">
+                ←
               </button>
-            `}
+              <span class="appbar-title" style="font-size: 16.5px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                ${activeItemName || 'アイテム詳細'}
+              </span>
+            </div>
+            <div class="appbar-right">
+              ${onDeleteItem && html`
+                <button
+                  class="btn-icon-mobile"
+                  style="color: var(--danger);"
+                  onClick=${onDeleteItem}
+                  title="このアイテムを削除"
+                >
+                  🗑️
+                </button>
+              `}
+            </div>
+          </header>
+        `;
+      }
+
+      return html`
+        <header class="mobile-appbar">
+          <div class="appbar-left">
+            <span class="appbar-title">
+              <span>✉️</span>
+              <span>Zaiko</span>
+            </span>
           </div>
 
-          <div class="header-right">
-            <button class="btn-tool" onClick=${onResetSample} title="初期サンプルデータを復元">
-              <span>🔄</span>
-              <span>サンプル</span>
-            </button>
-            <button class="btn-add-item" onClick=${onOpenNewModal}>
-              <span>＋</span>
-              <span>アイテム追加</span>
+          <div class="appbar-right">
+            <button class="btn-icon-mobile" onClick=${onResetSample} title="初期サンプルデータを復元">
+              🔄
             </button>
           </div>
         </header>
       `;
     }
 
-    // ItemList (Left Pane)
+    // ItemList (Mobile Inbox)
     function ItemList({
       items,
       selectedIds,
-      activeId,
-      filter,
+      searchQuery,
+      sortBy,
+      onSearchChange,
+      onSortChange,
       onSelectItem,
       onToggleCheck,
       onToggleSelectAll,
+      onOpenNewModal,
       onBatchToday,
       onOpenBatchDate,
-      onBatchDelete,
-      onSortChange
+      onBatchDelete
     }) {
       const isAllSelected = items.length > 0 && items.every(i => selectedIds.has(i.id));
       const hasSelection = selectedIds.size > 0;
 
       return html`
-        <section class="list-pane">
-          <div class="toolbar-mailer">
-            <div class="toolbar-actions">
+        <div class="view-container">
+          <!-- Search Bar -->
+          <div class="mobile-search-strip">
+            <div class="search-pill">
+              <span style="color: var(--text-muted); font-size: 15px;">🔍</span>
               <input
-                type="checkbox"
-                class="item-checkbox"
-                checked=${isAllSelected}
-                onChange=${onToggleSelectAll}
-                title=${isAllSelected ? '全選択を解除' : 'すべて選択'}
+                type="text"
+                class="search-pill-input"
+                placeholder="アイテムを検索..."
+                value=${searchQuery}
+                onInput=${(e) => onSearchChange(e.target.value)}
               />
-
-              ${hasSelection ? html`
-                <span style="font-size: 12px; font-weight: 600; color: var(--primary); margin: 0 4px;">
-                  ${selectedIds.size} 件
-                </span>
-
+              ${searchQuery && html`
                 <button
-                  class="btn-tool btn-tool-primary"
-                  onClick=${onBatchToday}
-                  title="選択したアイテムの購入日を今日として一括記録"
+                  style="background: transparent; border: none; font-size: 14px; color: var(--text-muted); cursor: pointer;"
+                  onClick=${() => onSearchChange('')}
                 >
-                  <span>⚡ 今日購入</span>
+                  ✕
                 </button>
-
-                <button
-                  class="btn-tool"
-                  onClick=${onOpenBatchDate}
-                  title="日付を指定して一括記録"
-                >
-                  <span>📅 日付指定...</span>
-                </button>
-
-                <button
-                  class="btn-tool"
-                  style="color: var(--danger);"
-                  onClick=${onBatchDelete}
-                  title="選択したアイテムを削除"
-                >
-                  <span>🗑️ 削除</span>
-                </button>
-              ` : html`
-                <span style="font-size: 12px; color: var(--text-secondary); margin-left: 6px;">
-                  ${items.length} 件
-                </span>
               `}
-            </div>
-
-            <div>
-              <select
-                class="sort-select"
-                value=${filter.sortBy}
-                onChange=${(e) => onSortChange(e.target.value)}
-              >
-                <option value="lastPurchaseDesc">購入日: 新しい順</option>
-                <option value="lastPurchaseAsc">購入日: 古い順</option>
-                <option value="nameAsc">名前順</option>
-                <option value="historyCountDesc">購入回数順</option>
-              </select>
             </div>
           </div>
 
-          <div class="items-scroll">
+          <!-- Subheader: Select all & Sort -->
+          <div class="list-subheader">
+            <label class="select-all-label">
+              <input
+                type="checkbox"
+                class="checkbox-mobile"
+                checked=${isAllSelected}
+                onChange=${onToggleSelectAll}
+              />
+              <span>${hasSelection ? `${selectedIds.size} 件選択中` : `すべて (${items.length})`}</span>
+            </label>
+
+            <select
+              class="sort-select-mobile"
+              value=${sortBy}
+              onChange=${(e) => onSortChange(e.target.value)}
+            >
+              <option value="lastPurchaseDesc">購入日: 新しい順</option>
+              <option value="lastPurchaseAsc">購入日: 古い順</option>
+              <option value="nameAsc">名前順</option>
+              <option value="historyCountDesc">購入回数順</option>
+            </select>
+          </div>
+
+          <!-- Scrollable List -->
+          <div class="items-list-scroll">
             ${items.length === 0 ? html`
-              <div style="padding: 40px 20px; text-align: center; color: var(--text-muted); font-size: 13px;">
-                アイテムがありません
+              <div style="padding: 60px 20px; text-align: center; color: var(--text-muted);">
+                <div style="font-size: 32px; margin-bottom: 8px;">📭</div>
+                <div style="font-size: 15px; font-weight: 500;">アイテムがありません</div>
+                <div style="font-size: 12.5px; margin-top: 4px;">右下のボタンから追加してください</div>
               </div>
             ` : items.map(item => {
               const isChecked = selectedIds.has(item.id);
-              const isActive = item.id === activeId;
               const latest = item.purchaseHistory[0];
               const relDate = latest ? getRelativeDateString(latest.date) : '未購入';
               const isToday = relDate === '今日';
@@ -302,56 +297,93 @@
               return html`
                 <div
                   key=${item.id}
-                  class="item-row ${isChecked ? 'selected' : ''} ${isActive ? 'active' : ''}"
+                  class="mobile-item-card ${isChecked ? 'checked' : ''}"
                   onClick=${() => onSelectItem(item.id)}
                 >
-                  <div onClick=${(e) => e.stopPropagation()}>
+                  <div
+                    class="item-check-hitarea"
+                    onClick=${(e) => {
+                      e.stopPropagation();
+                      onToggleCheck(item.id, !isChecked);
+                    }}
+                  >
                     <input
                       type="checkbox"
-                      class="item-checkbox"
+                      class="checkbox-mobile"
                       checked=${isChecked}
-                      onChange=${(e) => onToggleCheck(item.id, e.target.checked)}
+                      readOnly
                     />
                   </div>
 
-                  <div class="item-info">
-                    <span class="item-name" title=${item.name}>${item.name}</span>
-                    <div class="item-dates-meta">
-                      <span class="date-relative ${isToday ? 'today' : ''}">
+                  <div class="item-card-main">
+                    <div class="item-card-row-top">
+                      <span class="item-card-title">${item.name}</span>
+                      <span class="item-card-date ${isToday ? 'is-today' : ''}">
                         ${relDate}
                       </span>
-                      <span class="count-chip">${item.purchaseHistory.length}回</span>
+                    </div>
+                    <div class="item-card-sub">
+                      <span class="chip-history-count">${item.purchaseHistory.length}回購入</span>
+                      ${latest ? html`<span>最終: ${latest.date}</span>` : null}
                     </div>
                   </div>
+
+                  <span class="item-card-arrow">›</span>
                 </div>
               `;
             })}
           </div>
-        </section>
+
+          <!-- Floating Action Button (FAB) -->
+          ${!hasSelection && html`
+            <button class="fab-add" onClick=${onOpenNewModal}>
+              <span style="font-size: 20px;">＋</span>
+              <span>アイテム追加</span>
+            </button>
+          `}
+
+          <!-- Bottom Batch Action Bar -->
+          ${hasSelection && html`
+            <div class="bottom-batch-bar">
+              <span class="batch-count-badge">
+                ${selectedIds.size} 件選択中
+              </span>
+
+              <div class="batch-actions-group">
+                <button
+                  class="btn-batch-action primary"
+                  onClick=${onBatchToday}
+                  title="今日購入として記録"
+                >
+                  <span>⚡ 今日</span>
+                </button>
+
+                <button
+                  class="btn-batch-action"
+                  onClick=${onOpenBatchDate}
+                  title="日付を指定して記録"
+                >
+                  <span>📅 日付</span>
+                </button>
+
+                <button
+                  class="btn-batch-action danger"
+                  onClick=${onBatchDelete}
+                  title="選択したアイテムを削除"
+                >
+                  <span>🗑️</span>
+                </button>
+              </div>
+            </div>
+          `}
+        </div>
       `;
     }
 
-    // ItemDetail (Right Pane)
-    function ItemDetail({
-      item,
-      onRecordToday,
-      onAddDate,
-      onDeleteRecord,
-      onDeleteItem
-    }) {
+    // ItemDetail (Mobile Detail / Message View)
+    function ItemDetail({ item, onRecordToday, onAddDate, onDeleteRecord, onDeleteItem }) {
       const [showAddInput, setShowAddInput] = useState(false);
       const [inputDate, setInputDate] = useState(getTodayString());
-
-      if (!item) {
-        return html`
-          <main class="detail-pane">
-            <div class="detail-empty">
-              <span style="font-size: 32px;">✉️</span>
-              <div>アイテムを選択してください</div>
-            </div>
-          </main>
-        `;
-      }
 
       const latest = item.purchaseHistory[0];
 
@@ -363,99 +395,95 @@
       };
 
       return html`
-        <main class="detail-pane">
-          <div class="detail-header">
-            <h2 class="detail-title">${item.name}</h2>
-            <div class="detail-top-actions">
-              <button
-                class="btn-detail btn-detail-primary"
-                onClick=${() => onRecordToday(item.id)}
-                title="今日を購入日として記録"
-              >
-                <span>⚡ 今日購入を記録</span>
-              </button>
-              <button
-                class="btn-detail"
-                onClick=${() => setShowAddInput(!showAddInput)}
-                title="日付を指定して履歴を追加"
-              >
-                <span>📅 日付を追加</span>
-              </button>
-              <button
-                class="btn-detail"
-                style="color: var(--danger); border-color: #fad2cf;"
-                onClick=${() => onDeleteItem(item.id)}
-                title="このアイテムを削除"
-              >
-                <span>🗑️ 削除</span>
-              </button>
+        <div class="detail-view">
+          <div class="detail-view-content">
+            <div class="detail-title-card">
+              <h1 class="detail-item-title">${item.name}</h1>
             </div>
-          </div>
 
-          <div class="detail-content">
-            <div class="status-banner">
+            <div class="status-highlight-box">
               <div>
-                <div class="status-label">最新の購入日</div>
-                <div class="status-value">
+                <div class="status-highlight-label">最新の購入日</div>
+                <div class="status-highlight-value">
                   ${latest ? `${formatDate(latest.date)} (${getRelativeDateString(latest.date)})` : '未記録'}
                 </div>
               </div>
-              <div>
-                <div class="status-label">記録された購入回数</div>
-                <div class="status-value" style="text-align: right;">
+              <div style="text-align: right;">
+                <div class="status-highlight-label">購入回数</div>
+                <div class="status-highlight-value">
                   ${item.purchaseHistory.length} 回
                 </div>
               </div>
             </div>
 
-            ${showAddInput && html`
-              <form class="add-date-box" onSubmit=${handleAddSubmit}>
-                <span style="font-size: 13px; font-weight: 500;">購入日を追加:</span>
-                <input
-                  type="date"
-                  class="input-date"
-                  value=${inputDate}
-                  required
-                  onInput=${(e) => setInputDate(e.target.value)}
-                />
-                <button
-                  type="submit"
-                  class="btn-detail btn-detail-primary"
-                  style="padding: 5px 12px;"
-                >
-                  追加
-                </button>
-                <button
-                  type="button"
-                  class="btn-detail"
-                  style="padding: 5px 10px;"
-                  onClick=${() => setShowAddInput(false)}
-                >
-                  キャンセル
-                </button>
-              </form>
-            `}
+            <!-- Big thumb button -->
+            <button
+              class="btn-today-big"
+              onClick=${() => onRecordToday(item.id)}
+            >
+              <span style="font-size: 18px;">⚡</span>
+              <span>今日購入を記録する</span>
+            </button>
 
-            <div>
-              <div class="history-title-row">
+            <!-- History Block -->
+            <div class="history-block">
+              <div class="history-header-row">
                 <span class="history-heading">購入日履歴</span>
+                <button
+                  class="btn-add-past-date"
+                  onClick=${() => setShowAddInput(!showAddInput)}
+                >
+                  ${showAddInput ? '閉じる' : '＋ 過去の日付を追加'}
+                </button>
               </div>
 
+              ${showAddInput && html`
+                <form class="mobile-add-date-form" onSubmit=${handleAddSubmit}>
+                  <span style="font-size: 13px; font-weight: 600; color: var(--primary);">
+                    購入日を指定して追加:
+                  </span>
+                  <input
+                    type="date"
+                    class="input-mobile"
+                    value=${inputDate}
+                    required
+                    onInput=${(e) => setInputDate(e.target.value)}
+                  />
+                  <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <button
+                      type="button"
+                      class="btn-sheet-secondary"
+                      style="flex: none; padding: 8px 14px; font-size: 13px;"
+                      onClick=${() => setShowAddInput(false)}
+                    >
+                      キャンセル
+                    </button>
+                    <button
+                      type="submit"
+                      class="btn-sheet-primary"
+                      style="flex: none; padding: 8px 16px; font-size: 13px;"
+                    >
+                      追加
+                    </button>
+                  </div>
+                </form>
+              `}
+
               ${item.purchaseHistory.length === 0 ? html`
-                <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px;">
-                  購入履歴はまだありません。「⚡ 今日購入を記録」を押して記録できます。
+                <div style="padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px; background: #fafafa; border-radius: 8px;">
+                  購入日履歴がまだありません。上のボタンから今日購入を記録できます。
                 </div>
               ` : html`
-                <div class="history-list">
+                <div class="history-timeline-mobile">
                   ${item.purchaseHistory.map(record => html`
-                    <div key=${record.id} class="history-row">
-                      <div>
-                        <span class="history-date">${formatDate(record.date)}</span>
-                        <span class="history-rel">${getRelativeDateString(record.date)}</span>
+                    <div key=${record.id} class="history-card-mobile">
+                      <div class="history-card-left">
+                        <span class="history-card-date">${formatDate(record.date)}</span>
+                        <span class="history-card-rel">${getRelativeDateString(record.date)}</span>
                       </div>
                       <button
-                        class="btn-del-date"
-                        title="この購入日を削除"
+                        class="btn-del-record-mobile"
+                        title="この記録を削除"
                         onClick=${() => onDeleteRecord(item.id, record.id)}
                       >
                         ✕
@@ -465,12 +493,22 @@
                 </div>
               `}
             </div>
+
+            <!-- Danger Zone -->
+            <div class="danger-zone">
+              <button
+                class="btn-delete-item-full"
+                onClick=${() => onDeleteItem(item.id)}
+              >
+                🗑️ このアイテムを削除
+              </button>
+            </div>
           </div>
-        </main>
+        </div>
       `;
     }
 
-    // NewItemModal
+    // NewItemModal (Bottom Sheet)
     function NewItemModal({ isOpen, onClose, onSubmit }) {
       if (!isOpen) return null;
       const [name, setName] = useState('');
@@ -489,11 +527,12 @@
 
       return html`
         <div class="modal-overlay" onClick=${onClose}>
-          <div class="modal-box" onClick=${(e) => e.stopPropagation()}>
-            <div class="modal-header">
-              <span>アイテムを追加</span>
+          <div class="bottom-sheet" onClick=${(e) => e.stopPropagation()}>
+            <div class="sheet-header">
+              <span class="sheet-title">新規アイテムを追加</span>
               <button
-                style="background: transparent; border: none; cursor: pointer; font-size: 16px;"
+                class="btn-icon-mobile"
+                style="width: 32px; height: 32px;"
                 onClick=${onClose}
               >
                 ✕
@@ -501,14 +540,14 @@
             </div>
 
             <form onSubmit=${handleSubmit}>
-              <div class="modal-body">
+              <div class="sheet-body">
                 <div>
-                  <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 6px;">
+                  <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px;">
                     アイテム名 *
                   </label>
                   <input
                     type="text"
-                    class="form-input"
+                    class="input-mobile"
                     placeholder="例: シャンプー、コーヒー豆"
                     value=${name}
                     required
@@ -517,11 +556,11 @@
                   />
                 </div>
 
-                <div style="padding: 10px; background: #f8f9fa; border-radius: 6px; border: 1px solid var(--border-light);">
-                  <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+                <div style="background-color: #f8f9fa; border-radius: 8px; padding: 12px; border: 1px solid var(--border-color);">
+                  <label style="display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; cursor: pointer;">
                     <input
                       type="checkbox"
-                      class="item-checkbox"
+                      class="checkbox-mobile"
                       checked=${recordInitial}
                       onChange=${(e) => setRecordInitial(e.target.checked)}
                     />
@@ -529,10 +568,10 @@
                   </label>
 
                   ${recordInitial && html`
-                    <div style="margin-top: 8px;">
+                    <div style="margin-top: 10px;">
                       <input
                         type="date"
-                        class="form-input"
+                        class="input-mobile"
                         value=${purchaseDate}
                         onInput=${(e) => setPurchaseDate(e.target.value)}
                       />
@@ -541,12 +580,19 @@
                 </div>
               </div>
 
-              <div class="modal-footer">
-                <button type="button" class="btn-detail" onClick=${onClose}>
+              <div class="sheet-footer">
+                <button
+                  type="button"
+                  class="btn-sheet-secondary"
+                  onClick=${onClose}
+                >
                   キャンセル
                 </button>
-                <button type="submit" class="btn-detail btn-detail-primary">
-                  追加
+                <button
+                  type="submit"
+                  class="btn-sheet-primary"
+                >
+                  追加する
                 </button>
               </div>
             </form>
@@ -555,7 +601,7 @@
       `;
     }
 
-    // BatchDateModal
+    // BatchDateModal (Bottom Sheet)
     function BatchDateModal({ isOpen, selectedItems, onClose, onSubmit }) {
       if (!isOpen) return null;
       const [date, setDate] = useState(getTodayString());
@@ -569,11 +615,12 @@
 
       return html`
         <div class="modal-overlay" onClick=${onClose}>
-          <div class="modal-box" onClick=${(e) => e.stopPropagation()}>
-            <div class="modal-header">
-              <span>日付を指定して一括記録</span>
+          <div class="bottom-sheet" onClick=${(e) => e.stopPropagation()}>
+            <div class="sheet-header">
+              <span class="sheet-title">日付を指定して一括記録</span>
               <button
-                style="background: transparent; border: none; cursor: pointer; font-size: 16px;"
+                class="btn-icon-mobile"
+                style="width: 32px; height: 32px;"
                 onClick=${onClose}
               >
                 ✕
@@ -581,26 +628,26 @@
             </div>
 
             <form onSubmit=${handleSubmit}>
-              <div class="modal-body">
-                <div style="font-size: 13px; color: var(--text-secondary);">
+              <div class="sheet-body">
+                <div style="font-size: 13.5px; color: var(--text-secondary);">
                   選択した <strong>${selectedItems.length} 件</strong> のアイテムに購入日をまとめて記録します。
                 </div>
 
-                <div style="display: flex; flex-wrap: wrap; gap: 4px; max-height: 80px; overflow-y: auto;">
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 90px; overflow-y: auto; padding: 6px; background-color: #f8f9fa; border-radius: 8px;">
                   ${selectedItems.map(item => html`
-                    <span style="font-size: 11px; background: #e8f0fe; color: #1967d2; padding: 2px 6px; border-radius: 4px;">
+                    <span style="font-size: 11.5px; background: #e8f0fe; color: #1967d2; padding: 3px 8px; border-radius: 4px; font-weight: 500;">
                       ${item.name}
                     </span>
                   `)}
                 </div>
 
                 <div>
-                  <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 6px;">
+                  <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px;">
                     購入日 *
                   </label>
                   <input
                     type="date"
-                    class="form-input"
+                    class="input-mobile"
                     value=${date}
                     required
                     onInput=${(e) => setDate(e.target.value)}
@@ -608,12 +655,19 @@
                 </div>
               </div>
 
-              <div class="modal-footer">
-                <button type="button" class="btn-detail" onClick=${onClose}>
+              <div class="sheet-footer">
+                <button
+                  type="button"
+                  class="btn-sheet-secondary"
+                  onClick=${onClose}
+                >
                   キャンセル
                 </button>
-                <button type="submit" class="btn-detail btn-detail-primary">
-                  一括記録
+                <button
+                  type="submit"
+                  class="btn-sheet-primary"
+                >
+                  一括記録する
                 </button>
               </div>
             </form>
@@ -627,6 +681,7 @@
       const [items, setItems] = useState([]);
       const [selectedIds, setSelectedIds] = useState(new Set());
       const [activeId, setActiveId] = useState(null);
+      const [currentView, setCurrentView] = useState('list');
       const [toastMessage, setToastMessage] = useState(null);
 
       const [filter, setFilter] = useState({
@@ -640,16 +695,13 @@
       useEffect(() => {
         const loaded = loadItems();
         setItems(loaded);
-        if (loaded.length > 0) {
-          setActiveId(loaded[0].id);
-        }
       }, []);
 
       const showToast = (msg) => {
         setToastMessage(msg);
         setTimeout(() => {
           setToastMessage((cur) => (cur === msg ? null : cur));
-        }, 2800);
+        }, 2600);
       };
 
       const filteredItems = useMemo(() => {
@@ -680,6 +732,15 @@
       const activeItem = useMemo(() => {
         return items.find(i => i.id === activeId) || null;
       }, [items, activeId]);
+
+      const handleSelectItem = (id) => {
+        setActiveId(id);
+        setCurrentView('detail');
+      };
+
+      const handleBackToList = () => {
+        setCurrentView('list');
+      };
 
       const handleToggleCheck = (id, checked) => {
         setSelectedIds(prev => {
@@ -720,7 +781,7 @@
         saveItems(nextItems);
         setItems(nextItems);
         setSelectedIds(new Set());
-        showToast(`⚡ ${ids.length} 件のアイテムの購入日を今日で記録しました`);
+        showToast(`⚡ ${ids.length} 件の購入日を今日で記録しました`);
       };
 
       // 複数アイテムに「指定日」を一括記録
@@ -741,7 +802,7 @@
         saveItems(nextItems);
         setItems(nextItems);
         setSelectedIds(new Set());
-        showToast(`📅 ${ids.length} 件のアイテムの購入日 (${date}) を一括記録しました`);
+        showToast(`📅 ${ids.length} 件の購入日 (${date}) を一括記録しました`);
       };
 
       // 複数アイテム一括削除
@@ -755,13 +816,10 @@
         saveItems(nextItems);
         setItems(nextItems);
         setSelectedIds(new Set());
-        if (activeId && idSet.has(activeId)) {
-          setActiveId(nextItems[0]?.id || null);
-        }
         showToast(`${ids.length} 件のアイテムを削除しました`);
       };
 
-      // 単一アイテム今日記録
+      // 詳細画面からの今日記録
       const handleRecordToday = (itemId) => {
         const today = getTodayString();
         const nextItems = items.map(item => {
@@ -778,7 +836,7 @@
         showToast(`⚡ 「${target?.name}」の購入日を今日で記録しました`);
       };
 
-      // 単一アイテム日付追加
+      // 詳細画面からの日付追加
       const handleAddDate = (itemId, date) => {
         const nextItems = items.map(item => {
           if (item.id === itemId) {
@@ -829,6 +887,7 @@
         saveItems(nextItems);
         setItems(nextItems);
         setActiveId(newItem.id);
+        setCurrentView('detail');
         showToast(`「${newItem.name}」を追加しました`);
       };
 
@@ -845,52 +904,119 @@
           next.delete(itemId);
           return next;
         });
-        setActiveId(nextItems[0]?.id || null);
+        setCurrentView('list');
         showToast('アイテムを削除しました');
       };
 
       // サンプル復元
       const handleResetSample = () => {
         if (!confirm('初期サンプルデータにリセットしますか？')) return;
-        saveItems(SAMPLE_ITEMS);
-        setItems(SAMPLE_ITEMS);
+        const reset = [
+          {
+            id: 'item-1',
+            name: 'トイレットペーパー',
+            purchaseHistory: [
+              { id: 'rec-1-1', date: '2026-10-24' },
+              { id: 'rec-1-2', date: '2026-09-28' },
+              { id: 'rec-1-3', date: '2026-09-02' }
+            ],
+            createdAt: '2026-09-01T09:00:00Z',
+            updatedAt: '2026-10-24T10:00:00Z'
+          },
+          {
+            id: 'item-2',
+            name: '食器用洗剤',
+            purchaseHistory: [
+              { id: 'rec-2-1', date: '2026-10-18' },
+              { id: 'rec-2-2', date: '2026-08-30' }
+            ],
+            createdAt: '2026-08-30T11:00:00Z',
+            updatedAt: '2026-10-18T16:20:00Z'
+          },
+          {
+            id: 'item-3',
+            name: 'コーヒー豆',
+            purchaseHistory: [
+              { id: 'rec-3-1', date: '2026-10-10' },
+              { id: 'rec-3-2', date: '2026-09-15' },
+              { id: 'rec-3-3', date: '2026-08-20' }
+            ],
+            createdAt: '2026-08-20T17:00:00Z',
+            updatedAt: '2026-10-10T12:00:00Z'
+          },
+          {
+            id: 'item-4',
+            name: '洗濯洗剤',
+            purchaseHistory: [
+              { id: 'rec-4-1', date: '2026-09-10' }
+            ],
+            createdAt: '2026-09-10T08:00:00Z',
+            updatedAt: '2026-09-10T08:00:00Z'
+          },
+          {
+            id: 'item-5',
+            name: 'オリーブオイル',
+            purchaseHistory: [
+              { id: 'rec-5-1', date: '2026-08-15' }
+            ],
+            createdAt: '2026-08-15T14:00:00Z',
+            updatedAt: '2026-08-15T14:00:00Z'
+          },
+          {
+            id: 'item-6',
+            name: '目薬',
+            purchaseHistory: [
+              { id: 'rec-6-1', date: '2026-09-25' }
+            ],
+            createdAt: '2026-09-25T19:00:00Z',
+            updatedAt: '2026-09-25T19:00:00Z'
+          }
+        ];
+        saveItems(reset);
+        setItems(reset);
         setSelectedIds(new Set());
-        setActiveId(SAMPLE_ITEMS[0]?.id || null);
+        setActiveId(null);
+        setCurrentView('list');
         showToast('サンプルデータを復元しました');
       };
 
       return html`
         <div id="app">
           <${Header}
-            searchQuery=${filter.searchQuery}
-            onSearchChange=${(q) => setFilter(prev => ({ ...prev, searchQuery: q }))}
-            onOpenNewModal=${() => setIsNewModalOpen(true)}
+            currentView=${currentView}
+            activeItemName=${activeItem?.name}
+            onBackToList=${handleBackToList}
             onResetSample=${handleResetSample}
+            onDeleteItem=${currentView === 'detail' && activeItem ? () => handleDeleteItem(activeItem.id) : undefined}
           />
 
-          <div class="main-container">
+          ${currentView === 'list' ? html`
             <${ItemList}
               items=${filteredItems}
               selectedIds=${selectedIds}
-              activeId=${activeId}
-              filter=${filter}
-              onSelectItem=${(id) => setActiveId(id)}
+              searchQuery=${filter.searchQuery}
+              sortBy=${filter.sortBy}
+              onSearchChange=${(q) => setFilter(prev => ({ ...prev, searchQuery: q }))}
+              onSortChange={(sortBy) => setFilter(prev => ({ ...prev, sortBy }))}
+              onSelectItem=${handleSelectItem}
               onToggleCheck=${handleToggleCheck}
               onToggleSelectAll=${handleToggleSelectAll}
+              onOpenNewModal=${() => setIsNewModalOpen(true)}
               onBatchToday=${handleBatchToday}
               onOpenBatchDate=${() => setIsBatchDateModalOpen(true)}
               onBatchDelete=${handleBatchDelete}
-              onSortChange=${(sortBy) => setFilter(prev => ({ ...prev, sortBy }))}
             />
-
-            <${ItemDetail}
-              item=${activeItem}
-              onRecordToday=${handleRecordToday}
-              onAddDate=${handleAddDate}
-              onDeleteRecord=${handleDeleteRecord}
-              onDeleteItem=${handleDeleteItem}
-            />
-          </div>
+          ` : html`
+            ${activeItem && html`
+              <${ItemDetail}
+                item=${activeItem}
+                onRecordToday=${handleRecordToday}
+                onAddDate=${handleAddDate}
+                onDeleteRecord=${handleDeleteRecord}
+                onDeleteItem=${handleDeleteItem}
+              />
+            `}
+          `}
 
           <${NewItemModal}
             isOpen=${isNewModalOpen}
@@ -906,7 +1032,7 @@
           />
 
           ${toastMessage && html`
-            <div class="toast">
+            <div class="mobile-toast">
               ${toastMessage}
             </div>
           `}

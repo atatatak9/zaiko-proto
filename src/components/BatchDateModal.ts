@@ -32,11 +32,12 @@ export function BatchDateModal({
 
   return html`
     <div class="modal-overlay" onClick=${onClose}>
-      <div class="modal-box" onClick=${(e: MouseEvent) => e.stopPropagation()}>
-        <div class="modal-header">
-          <span>日付を指定して一括記録</span>
+      <div class="bottom-sheet" onClick=${(e: MouseEvent) => e.stopPropagation()}>
+        <div class="sheet-header">
+          <span class="sheet-title">日付を指定して一括記録</span>
           <button
-            style="background: transparent; border: none; cursor: pointer; font-size: 16px;"
+            class="btn-icon-mobile"
+            style="width: 32px; height: 32px;"
             onClick=${onClose}
           >
             ✕
@@ -44,26 +45,26 @@ export function BatchDateModal({
         </div>
 
         <form onSubmit=${handleSubmit}>
-          <div class="modal-body">
-            <div style="font-size: 13px; color: var(--text-secondary);">
+          <div class="sheet-body">
+            <div style="font-size: 13.5px; color: var(--text-secondary);">
               選択した <strong>${selectedItems.length} 件</strong> のアイテムに購入日をまとめて記録します。
             </div>
 
-            <div style="display: flex; flex-wrap: wrap; gap: 4px; max-height: 80px; overflow-y: auto;">
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 90px; overflow-y: auto; padding: 6px; background-color: #f8f9fa; border-radius: 8px;">
               ${selectedItems.map(item => html`
-                <span style="font-size: 11px; background: #e8f0fe; color: #1967d2; padding: 2px 6px; border-radius: 4px;">
+                <span style="font-size: 11.5px; background: #e8f0fe; color: #1967d2; padding: 3px 8px; border-radius: 4px; font-weight: 500;">
                   ${item.name}
                 </span>
               `)}
             </div>
 
             <div>
-              <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 6px;">
+              <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px;">
                 購入日 *
               </label>
               <input
                 type="date"
-                class="form-input"
+                class="input-mobile"
                 value=${date}
                 required
                 onInput=${(e: any) => setDate(e.target.value)}
@@ -71,12 +72,19 @@ export function BatchDateModal({
             </div>
           </div>
 
-          <div class="modal-footer">
-            <button type="button" class="btn-detail" onClick=${onClose}>
+          <div class="sheet-footer">
+            <button
+              type="button"
+              class="btn-sheet-secondary"
+              onClick=${onClose}
+            >
               キャンセル
             </button>
-            <button type="submit" class="btn-detail btn-detail-primary">
-              一括記録
+            <button
+              type="submit"
+              class="btn-sheet-primary"
+            >
+              一括記録する
             </button>
           </div>
         </form>

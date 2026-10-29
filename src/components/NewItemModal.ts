@@ -37,11 +37,12 @@ export function NewItemModal({
 
   return html`
     <div class="modal-overlay" onClick=${onClose}>
-      <div class="modal-box" onClick=${(e: MouseEvent) => e.stopPropagation()}>
-        <div class="modal-header">
-          <span>アイテムを追加</span>
+      <div class="bottom-sheet" onClick=${(e: MouseEvent) => e.stopPropagation()}>
+        <div class="sheet-header">
+          <span class="sheet-title">新規アイテムを追加</span>
           <button
-            style="background: transparent; border: none; cursor: pointer; font-size: 16px;"
+            class="btn-icon-mobile"
+            style="width: 32px; height: 32px;"
             onClick=${onClose}
           >
             ✕
@@ -49,14 +50,14 @@ export function NewItemModal({
         </div>
 
         <form onSubmit=${handleSubmit}>
-          <div class="modal-body">
+          <div class="sheet-body">
             <div>
-              <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 6px;">
+              <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px;">
                 アイテム名 *
               </label>
               <input
                 type="text"
-                class="form-input"
+                class="input-mobile"
                 placeholder="例: シャンプー、コーヒー豆"
                 value=${name}
                 required
@@ -65,11 +66,11 @@ export function NewItemModal({
               />
             </div>
 
-            <div style="padding: 10px; background: #f8f9fa; border-radius: 6px; border: 1px solid var(--border-light);">
-              <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer;">
+            <div style="background-color: #f8f9fa; border-radius: 8px; padding: 12px; border: 1px solid var(--border-color);">
+              <label style="display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; cursor: pointer;">
                 <input
                   type="checkbox"
-                  class="item-checkbox"
+                  class="checkbox-mobile"
                   checked=${recordInitial}
                   onChange=${(e: any) => setRecordInitial(e.target.checked)}
                 />
@@ -77,10 +78,10 @@ export function NewItemModal({
               </label>
 
               ${recordInitial && html`
-                <div style="margin-top: 8px;">
+                <div style="margin-top: 10px;">
                   <input
                     type="date"
-                    class="form-input"
+                    class="input-mobile"
                     value=${purchaseDate}
                     onInput=${(e: any) => setPurchaseDate(e.target.value)}
                   />
@@ -89,19 +90,19 @@ export function NewItemModal({
             </div>
           </div>
 
-          <div class="modal-footer">
+          <div class="sheet-footer">
             <button
               type="button"
-              class="btn-detail"
+              class="btn-sheet-secondary"
               onClick=${onClose}
             >
               キャンセル
             </button>
             <button
               type="submit"
-              class="btn-detail btn-detail-primary"
+              class="btn-sheet-primary"
             >
-              追加
+              追加する
             </button>
           </div>
         </form>

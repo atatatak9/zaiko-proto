@@ -17,6 +17,7 @@ export function App() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<'list' | 'detail'>('list');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [filter, setFilter] = useState<FilterState>({
@@ -30,16 +31,13 @@ export function App() {
   useEffect(() => {
     const loaded = storage.loadItems();
     setItems(loaded);
-    if (loaded.length > 0) {
-      setActiveId(loaded[0].id);
-    }
   }, []);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage((cur) => (cur === msg ? null : cur));
-    }, 2800);
+    }, 2600);
   };
 
   // 検索とソート
@@ -65,7 +63,6 @@ export function App() {
         if (!dateB) return -1;
         return dateA.localeCompare(dateB);
       }
-      // lastPurchaseDesc (default)
       if (!dateA) return 1;
       if (!dateB) return -1;
       return dateB.localeCompare(dateA);
@@ -77,6 +74,17 @@ export function App() {
   const activeItem = useMemo(() => {
     return items.find(i => i.id === activeId) || null;
   }, [items, activeId]);
+
+  // アイテム選択 (詳細画面へ遷移)
+  const handleSelectItem = (id: string) => {
+    setActiveId(id);
+    setCurrentView('detail');
+  };
+
+  // 一覧へ戻る
+  const handleBackToList = () => {
+    setCurrentView('list');
+  };
 
   // チェック操作
   const handleToggleCheck = (id: string, checked: boolean) => {
@@ -106,7 +114,7 @@ export function App() {
     const count = storage.batchAddPurchaseDate(ids, getTodayString());
     setItems(storage.loadItems());
     setSelectedIds(new Set());
-    showToast(`⚡ ${count} 件のアイテムの購入日を今日で記録しました`);
+    showToast(`⚡ ${count} 件の購入日を今日で記録しました`);
   };
 
   // 複数アイテムに「指定日」を一括記録
@@ -116,7 +124,7 @@ export function App() {
     const count = storage.batchAddPurchaseDate(ids, date);
     setItems(storage.loadItems());
     setSelectedIds(new Set());
-    showToast(`📅 ${count} 件のアイテムの購入日 (${date}) を一括記録しました`);
+    showToast(`📅 ${count} 件の購入日 (${date}) を一括記録しました`);
   };
 
   // 複数アイテム一括削除
@@ -129,13 +137,10 @@ export function App() {
     const updated = storage.loadItems();
     setItems(updated);
     setSelectedIds(new Set());
-    if (activeId && ids.includes(activeId)) {
-      setActiveId(updated[0]?.id || null);
-    }
     showToast(`${ids.length} 件のアイテムを削除しました`);
   };
 
-  // 単一アイテムの今日記録
+  // 詳細画面からの今日記録
   const handleRecordToday = (itemId: string) => {
     storage.addPurchaseDate(itemId, getTodayString());
     setItems(storage.loadItems());
@@ -143,7 +148,7 @@ export function App() {
     showToast(`⚡ 「${target?.name}」の購入日を今日で記録しました`);
   };
 
-  // 単一アイテムの日付追加
+  // 詳細画面からの日付追加
   const handleAddDate = (itemId: string, date: string) => {
     storage.addPurchaseDate(itemId, date);
     setItems(storage.loadItems());
@@ -164,6 +169,7 @@ export function App() {
     const updated = storage.loadItems();
     setItems(updated);
     setActiveId(created.id);
+    setCurrentView('detail');
     showToast(`「${created.name}」を追加しました`);
   };
 
@@ -180,7 +186,7 @@ export function App() {
       next.delete(itemId);
       return next;
     });
-    setActiveId(updated[0]?.id || null);
+    setCurrentView('list');
     showToast('アイテムを削除しました');
   };
 
@@ -190,46 +196,50 @@ export function App() {
     const reset = storage.resetToSampleData();
     setItems(reset);
     setSelectedIds(new Set());
-    setActiveId(reset[0]?.id || null);
+    setActiveId(null);
+    setCurrentView('list');
     showToast('サンプルデータを復元しました');
   };
 
   return html`
     <div id="app">
       <${Header}
-        searchQuery=${filter.searchQuery}
-        onSearchChange=${(q: string) => setFilter(prev => ({ ...prev, searchQuery: q }))}
-        onOpenNewModal=${() => setIsNewModalOpen(true)}
+        currentView=${currentView}
+        activeItemName=${activeItem?.name}
+        onBackToList=${handleBackToList}
         onResetSample=${handleResetSample}
+        onDeleteItem=${currentView === 'detail' && activeItem ? () => handleDeleteItem(activeItem.id) : undefined}
       />
 
-      <div class="main-container">
-        <!-- Inbox List -->
+      ${currentView === 'list' ? html`
         <${ItemList}
           items=${filteredItems}
           selectedIds=${selectedIds}
-          activeId=${activeId}
-          filter=${filter}
-          onSelectItem=${(id: string) => setActiveId(id)}
+          searchQuery=${filter.searchQuery}
+          sortBy=${filter.sortBy}
+          onSearchChange=${(q: string) => setFilter(prev => ({ ...prev, searchQuery: q }))}
+          onSortChange=${(sortBy: FilterState['sortBy']) => setFilter(prev => ({ ...prev, sortBy }))}
+          onSelectItem=${handleSelectItem}
           onToggleCheck=${handleToggleCheck}
           onToggleSelectAll=${handleToggleSelectAll}
+          onOpenNewModal=${() => setIsNewModalOpen(true)}
           onBatchToday=${handleBatchToday}
           onOpenBatchDate=${() => setIsBatchDateModalOpen(true)}
           onBatchDelete=${handleBatchDelete}
-          onSortChange=${(sortBy: FilterState['sortBy']) => setFilter(prev => ({ ...prev, sortBy }))}
         />
+      ` : html`
+        ${activeItem && html`
+          <${ItemDetail}
+            item=${activeItem}
+            onRecordToday=${handleRecordToday}
+            onAddDate=${handleAddDate}
+            onDeleteRecord=${handleDeleteRecord}
+            onDeleteItem=${handleDeleteItem}
+          />
+        `}
+      `}
 
-        <!-- Viewer Detail -->
-        <${ItemDetail}
-          item=${activeItem}
-          onRecordToday=${handleRecordToday}
-          onAddDate=${handleAddDate}
-          onDeleteRecord=${handleDeleteRecord}
-          onDeleteItem=${handleDeleteItem}
-        />
-      </div>
-
-      <!-- Modals -->
+      <!-- Modals (Bottom Sheets) -->
       <${NewItemModal}
         isOpen=${isNewModalOpen}
         onClose=${() => setIsNewModalOpen(false)}
@@ -244,7 +254,7 @@ export function App() {
       />
 
       ${toastMessage && html`
-        <div class="toast">
+        <div class="mobile-toast">
           ${toastMessage}
         </div>
       `}
