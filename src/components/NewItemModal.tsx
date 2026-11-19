@@ -1,10 +1,6 @@
-import { h } from 'preact';
 import { useState } from 'preact/hooks';
-import htm from 'htm';
-import { NewItemInput } from '../types/index.js';
-import { getTodayString } from '../utils/date.js';
-
-const html = htm.bind(h);
+import { NewItemInput } from '../types';
+import { getTodayString } from '../utils/date';
 
 interface NewItemModalProps {
   isOpen: boolean;
@@ -35,58 +31,58 @@ export function NewItemModal({
     onClose();
   };
 
-  return html`
-    <div class="modal-overlay" onClick=${onClose}>
-      <div class="bottom-sheet" onClick=${(e: MouseEvent) => e.stopPropagation()}>
+  return (
+    <div class="modal-overlay" onClick={onClose}>
+      <div class="bottom-sheet" onClick={(e: MouseEvent) => e.stopPropagation()}>
         <div class="sheet-header">
           <span class="sheet-title">新規アイテムを追加</span>
           <button
             class="btn-icon-mobile"
-            style="width: 32px; height: 32px;"
-            onClick=${onClose}
+            style={{ width: '32px', height: '32px' }}
+            onClick={onClose}
           >
             ✕
           </button>
         </div>
 
-        <form onSubmit=${handleSubmit}>
+        <form onSubmit={handleSubmit}>
           <div class="sheet-body">
             <div>
-              <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px;">
+              <label style={{ fontSize: '13px', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                 アイテム名 *
               </label>
               <input
                 type="text"
                 class="input-mobile"
                 placeholder="例: シャンプー、コーヒー豆"
-                value=${name}
+                value={name}
                 required
                 autoFocus
-                onInput=${(e: any) => setName(e.target.value)}
+                onInput={(e: any) => setName(e.target.value)}
               />
             </div>
 
-            <div style="background-color: #f8f9fa; border-radius: 8px; padding: 12px; border: 1px solid var(--border-color);">
-              <label style="display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; cursor: pointer;">
+            <div style={{ backgroundColor: '#f8f9fa', borderRadius: '8px', padding: '12px', border: '1px solid var(--border-color)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   class="checkbox-mobile"
-                  checked=${recordInitial}
-                  onChange=${(e: any) => setRecordInitial(e.target.checked)}
+                  checked={recordInitial}
+                  onChange={(e: any) => setRecordInitial(e.target.checked)}
                 />
                 <span>初回の購入日も記録する</span>
               </label>
 
-              ${recordInitial && html`
-                <div style="margin-top: 10px;">
+              {recordInitial && (
+                <div style={{ marginTop: '10px' }}>
                   <input
                     type="date"
                     class="input-mobile"
-                    value=${purchaseDate}
-                    onInput=${(e: any) => setPurchaseDate(e.target.value)}
+                    value={purchaseDate}
+                    onInput={(e: any) => setPurchaseDate(e.target.value)}
                   />
                 </div>
-              `}
+              )}
             </div>
           </div>
 
@@ -94,7 +90,7 @@ export function NewItemModal({
             <button
               type="button"
               class="btn-sheet-secondary"
-              onClick=${onClose}
+              onClick={onClose}
             >
               キャンセル
             </button>
@@ -108,5 +104,5 @@ export function NewItemModal({
         </form>
       </div>
     </div>
-  `;
+  );
 }

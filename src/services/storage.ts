@@ -1,5 +1,5 @@
-import { InventoryItem, PurchaseRecord, NewItemInput } from '../types/index.js';
-import { getTodayString } from '../utils/date.js';
+import { InventoryItem, PurchaseRecord, NewItemInput } from '../types';
+import { getTodayString } from '../utils/date';
 
 const STORAGE_KEY = 'zaiko_minimal_items_v2';
 

@@ -1,0 +1,220 @@
+import { useState, useEffect, useMemo } from 'preact/hooks';
+import { InventoryItem, NewItemInput } from './types';
+import * as storage from './services/storage';
+import { getTodayString } from './utils/date';
+import { useRoute, navigateToDetail, navigateToList } from './router';
+
+import { Header } from './components/Header';
+import { ItemList } from './components/ItemList';
+import { ItemDetail } from './components/ItemDetail';
+import { NewItemModal } from './components/NewItemModal';
+import { BatchDateModal } from './components/BatchDateModal';
+
+export function App() {
+  const route = useRoute();
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [isBatchDateModalOpen, setIsBatchDateModalOpen] = useState(false);
+
+  useEffect(() => {
+    const loaded = storage.loadItems();
+    setItems(loaded);
+  }, []);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((cur) => (cur === msg ? null : cur));
+    }, 2600);
+  };
+
+  // （最新の）購入日の古い順に固定ソート
+  const sortedItems = useMemo(() => {
+    const result = [...items];
+    result.sort((a, b) => {
+      const dateA = a.purchaseHistory[0]?.date || '';
+      const dateB = b.purchaseHistory[0]?.date || '';
+      if (!dateA && dateB) return 1; // 未記録は末尾
+      if (dateA && !dateB) return -1;
+      if (dateA !== dateB) return dateA.localeCompare(dateB); // 古い順 (昇順)
+      return a.name.localeCompare(b.name, 'ja');
+    });
+    return result;
+  }, [items]);
+
+  // 現在アクティブなアイテム (URLハッシュから判定)
+  const activeItem = useMemo(() => {
+    if (route.view !== 'detail' || !route.itemId) return null;
+    return items.find(i => i.id === route.itemId) || null;
+  }, [items, route]);
+
+  // 存在しないアイテム詳細URLの場合は一覧へフォールバック
+  useEffect(() => {
+    if (route.view === 'detail' && items.length > 0 && !activeItem) {
+      navigateToList();
+    }
+  }, [route, items, activeItem]);
+
+  // アイテム選択 (詳細画面URLへ遷移)
+  const handleSelectItem = (id: string) => {
+    navigateToDetail(id);
+  };
+
+  // 一覧へ戻る (一覧URLへ遷移)
+  const handleBackToList = () => {
+    navigateToList();
+  };
+
+  // チェック操作
+  const handleToggleCheck = (id: string, checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const handleToggleSelectAll = () => {
+    const isAll = sortedItems.length > 0 && sortedItems.every(i => selectedIds.has(i.id));
+    if (isAll) {
+      setSelectedIds(new Set());
+    } else {
+      const next = new Set(selectedIds);
+      sortedItems.forEach(i => next.add(i.id));
+      setSelectedIds(next);
+    }
+  };
+
+  // 複数アイテムに「今日」を一括記録
+  const handleBatchToday = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    const count = storage.batchAddPurchaseDate(ids, getTodayString());
+    setItems(storage.loadItems());
+    setSelectedIds(new Set());
+    showToast(`⚡ ${count} 件の購入日を今日で記録しました`);
+  };
+
+  // 複数アイテムに「指定日」を一括記録
+  const handleBatchCustomDate = (date: string) => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    const count = storage.batchAddPurchaseDate(ids, date);
+    setItems(storage.loadItems());
+    setSelectedIds(new Set());
+    showToast(`📅 ${count} 件の購入日 (${date}) を一括記録しました`);
+  };
+
+  // 複数アイテム一括削除
+  const handleBatchDelete = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (!confirm(`選択した ${ids.length} 件のアイテムを削除しますか？`)) return;
+
+    storage.deleteItems(ids);
+    const updated = storage.loadItems();
+    setItems(updated);
+    setSelectedIds(new Set());
+    showToast(`${ids.length} 件のアイテムを削除しました`);
+  };
+
+  // 購入日履歴個別削除
+  const handleDeleteRecord = (itemId: string, recordId: string) => {
+    if (!confirm('この購入日を削除しますか？')) return;
+    storage.deletePurchaseRecord(itemId, recordId);
+    setItems(storage.loadItems());
+    showToast('購入日を削除しました');
+  };
+
+  // アイテム新規追加
+  const handleCreateNewItem = (input: NewItemInput) => {
+    const created = storage.addItem(input);
+    const updated = storage.loadItems();
+    setItems(updated);
+    navigateToList();
+    showToast(`「${created.name}」を追加しました`);
+  };
+
+  // 単一アイテム削除 (詳細画面の最下部から)
+  const handleDeleteItem = (itemId: string) => {
+    const target = items.find(i => i.id === itemId);
+    if (!confirm(`「${target?.name}」を削除しますか？`)) return;
+
+    storage.deleteItem(itemId);
+    const updated = storage.loadItems();
+    setItems(updated);
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.delete(itemId);
+      return next;
+    });
+    navigateToList();
+    showToast('アイテムを削除しました');
+  };
+
+  // サンプルデータ復元
+  const handleResetSample = () => {
+    if (!confirm('初期サンプルデータにリセットしますか？')) return;
+    const reset = storage.resetToSampleData();
+    setItems(reset);
+    setSelectedIds(new Set());
+    navigateToList();
+    showToast('サンプルデータを復元しました');
+  };
+
+  return (
+    <div id="app">
+      <Header
+        currentView={route.view}
+        onBackToList={handleBackToList}
+        onResetSample={handleResetSample}
+      />
+
+      {route.view === 'list' ? (
+        <ItemList
+          items={sortedItems}
+          selectedIds={selectedIds}
+          onSelectItem={handleSelectItem}
+          onToggleCheck={handleToggleCheck}
+          onToggleSelectAll={handleToggleSelectAll}
+          onOpenNewModal={() => setIsNewModalOpen(true)}
+          onBatchToday={handleBatchToday}
+          onOpenBatchDate={() => setIsBatchDateModalOpen(true)}
+          onBatchDelete={handleBatchDelete}
+        />
+      ) : (
+        activeItem && (
+          <ItemDetail
+            item={activeItem}
+            onDeleteRecord={handleDeleteRecord}
+            onDeleteItem={handleDeleteItem}
+          />
+        )
+      )}
+
+      {/* Modals */}
+      <NewItemModal
+        isOpen={isNewModalOpen}
+        onClose={() => setIsNewModalOpen(false)}
+        onSubmit={handleCreateNewItem}
+      />
+
+      <BatchDateModal
+        isOpen={isBatchDateModalOpen}
+        selectedItems={items.filter(i => selectedIds.has(i.id))}
+        onClose={() => setIsBatchDateModalOpen(false)}
+        onSubmit={handleBatchCustomDate}
+      />
+
+      {toastMessage && (
+        <div class="mobile-toast">
+          {toastMessage}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,10 +1,6 @@
-import { h } from 'preact';
 import { useState } from 'preact/hooks';
-import htm from 'htm';
-import { InventoryItem } from '../types/index.js';
-import { getTodayString } from '../utils/date.js';
-
-const html = htm.bind(h);
+import { InventoryItem } from '../types';
+import { getTodayString } from '../utils/date';
 
 interface BatchDateModalProps {
   isOpen: boolean;
@@ -30,44 +26,47 @@ export function BatchDateModal({
     onClose();
   };
 
-  return html`
-    <div class="modal-overlay" onClick=${onClose}>
-      <div class="bottom-sheet" onClick=${(e: MouseEvent) => e.stopPropagation()}>
+  return (
+    <div class="modal-overlay" onClick={onClose}>
+      <div class="bottom-sheet" onClick={(e: MouseEvent) => e.stopPropagation()}>
         <div class="sheet-header">
           <span class="sheet-title">日付を指定して一括記録</span>
           <button
             class="btn-icon-mobile"
-            style="width: 32px; height: 32px;"
-            onClick=${onClose}
+            style={{ width: '32px', height: '32px' }}
+            onClick={onClose}
           >
             ✕
           </button>
         </div>
 
-        <form onSubmit=${handleSubmit}>
+        <form onSubmit={handleSubmit}>
           <div class="sheet-body">
-            <div style="font-size: 13.5px; color: var(--text-secondary);">
-              選択した <strong>${selectedItems.length} 件</strong> のアイテムに購入日をまとめて記録します。
+            <div style={{ fontSize: '13.5px', color: 'var(--text-secondary)' }}>
+              選択した <strong>{selectedItems.length} 件</strong> のアイテムに購入日をまとめて記録します。
             </div>
 
-            <div style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 90px; overflow-y: auto; padding: 6px; background-color: #f8f9fa; border-radius: 8px;">
-              ${selectedItems.map(item => html`
-                <span style="font-size: 11.5px; background: #e8f0fe; color: #1967d2; padding: 3px 8px; border-radius: 4px; font-weight: 500;">
-                  ${item.name}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '90px', overflowY: 'auto', padding: '6px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
+              {selectedItems.map(item => (
+                <span
+                  key={item.id}
+                  style={{ fontSize: '11.5px', background: '#e8f0fe', color: '#1967d2', padding: '3px 8px', borderRadius: '4px', fontWeight: 500 }}
+                >
+                  {item.name}
                 </span>
-              `)}
+              ))}
             </div>
 
             <div>
-              <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px;">
+              <label style={{ fontSize: '13px', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                 購入日 *
               </label>
               <input
                 type="date"
                 class="input-mobile"
-                value=${date}
+                value={date}
                 required
-                onInput=${(e: any) => setDate(e.target.value)}
+                onInput={(e: any) => setDate(e.target.value)}
               />
             </div>
           </div>
@@ -76,7 +75,7 @@ export function BatchDateModal({
             <button
               type="button"
               class="btn-sheet-secondary"
-              onClick=${onClose}
+              onClick={onClose}
             >
               キャンセル
             </button>
@@ -90,5 +89,5 @@ export function BatchDateModal({
         </form>
       </div>
     </div>
-  `;
+  );
 }

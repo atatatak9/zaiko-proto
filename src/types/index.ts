@@ -18,14 +18,6 @@ export interface InventoryItem {
 }
 
 /**
- * フィルタ・ソート状態
- */
-export interface FilterState {
-  searchQuery: string;
-  sortBy: 'lastPurchaseDesc' | 'lastPurchaseAsc' | 'nameAsc' | 'historyCountDesc';
-}
-
-/**
  * アイテム新規作成入力
  */
 export interface NewItemInput {
