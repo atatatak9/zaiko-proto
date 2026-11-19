@@ -30,7 +30,7 @@ export function BatchDateModal({
     <div class="modal-overlay" onClick={onClose}>
       <div class="bottom-sheet" onClick={(e: MouseEvent) => e.stopPropagation()}>
         <div class="sheet-header">
-          <span class="sheet-title">日付を指定して一括記録</span>
+          <span class="sheet-title">購入日を記録</span>
           <button
             class="btn-icon-mobile"
             style={{ width: '32px', height: '32px' }}
@@ -43,7 +43,7 @@ export function BatchDateModal({
         <form onSubmit={handleSubmit}>
           <div class="sheet-body">
             <div style={{ fontSize: '13.5px', color: 'var(--text-secondary)' }}>
-              選択した <strong>{selectedItems.length} 件</strong> のアイテムに購入日をまとめて記録します。
+              選択した <strong>{selectedItems.length} 件</strong> のアイテムに購入日を記録します。
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '90px', overflowY: 'auto', padding: '6px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
@@ -73,17 +73,17 @@ export function BatchDateModal({
 
           <div class="sheet-footer">
             <button
+              type="submit"
+              class="btn-sheet-primary"
+            >
+              記録する
+            </button>
+            <button
               type="button"
               class="btn-sheet-secondary"
               onClick={onClose}
             >
               キャンセル
-            </button>
-            <button
-              type="submit"
-              class="btn-sheet-primary"
-            >
-              一括記録する
             </button>
           </div>
         </form>

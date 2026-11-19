@@ -106,7 +106,7 @@ export function App() {
     const count = storage.batchAddPurchaseDate(ids, date);
     setItems(storage.loadItems());
     setSelectedIds(new Set());
-    showToast(`📅 ${count} 件の購入日 (${date}) を一括記録しました`);
+    showToast(`📅 ${count} 件の購入日 (${date}) を記録しました`);
   };
 
   // 複数アイテム一括削除
@@ -182,7 +182,6 @@ export function App() {
           onToggleCheck={handleToggleCheck}
           onToggleSelectAll={handleToggleSelectAll}
           onOpenNewModal={() => setIsNewModalOpen(true)}
-          onBatchToday={handleBatchToday}
           onOpenBatchDate={() => setIsBatchDateModalOpen(true)}
           onBatchDelete={handleBatchDelete}
         />

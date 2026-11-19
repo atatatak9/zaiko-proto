@@ -10,7 +10,6 @@ interface ItemListProps {
   onToggleCheck: (id: string, checked: boolean) => void;
   onToggleSelectAll: () => void;
   onOpenNewModal: () => void;
-  onBatchToday: () => void;
   onOpenBatchDate: () => void;
   onBatchDelete: () => void;
 }
@@ -22,7 +21,6 @@ export function ItemList({
   onToggleCheck,
   onToggleSelectAll,
   onOpenNewModal,
-  onBatchToday,
   onOpenBatchDate,
   onBatchDelete
 }: ItemListProps) {
@@ -122,9 +120,13 @@ export function ItemList({
 
       {/* Floating Action Button (FAB) */}
       {!hasSelection && (
-        <button class="fab-add" onClick={onOpenNewModal}>
-          <span style={{ fontSize: '20px' }}>＋</span>
-          <span>アイテム追加</span>
+        <button
+          class="fab-add"
+          onClick={onOpenNewModal}
+          title="アイテムを追加する"
+          aria-label="アイテムを追加する"
+        >
+          <span>＋</span>
         </button>
       )}
 
@@ -138,15 +140,15 @@ export function ItemList({
                 onClick={() => setIsCalendarMenuOpen(false)}
               />
               <div class="calendar-menu-popover">
-                <div class="calendar-menu-header">Google カレンダー</div>
+                <div class="calendar-menu-header">Googleカレンダー連携</div>
                 <button
                   class="calendar-menu-item"
                   onClick={handleAddCalendarEvent}
-                  title="選択したアイテムの購入予定日をカレンダーに追加"
+                  title="選択したアイテムの購入予定日をカレンダーに追加する"
                 >
                   <span class="calendar-menu-icon">➕</span>
                   <div class="calendar-menu-text">
-                    <div class="calendar-menu-title">次回購入予定日を追加</div>
+                    <div class="calendar-menu-title">次回購入予定日を追加する</div>
                     <div class="calendar-menu-desc">{selectedItems.length}件のアイテム予定を作成</div>
                   </div>
                 </button>
@@ -165,46 +167,33 @@ export function ItemList({
             </>
           )}
 
-          <div class="bottom-batch-bar">
-            <span class="batch-count-badge">
-              <span>{selectedIds.size}</span>
-              <span>件</span>
-              <span class="badge-suffix">選択中</span>
-            </span>
+          <div class="bottom-batch-bar" role="toolbar" aria-label="選択中アイテムの一括操作">
+            <button
+              class="btn-batch-action"
+              onClick={onOpenBatchDate}
+              title="購入日を記録する"
+              aria-label="購入日を記録する"
+            >
+              <span>📝</span>
+            </button>
 
-            <div class="batch-actions-group">
-              <button
-                class="btn-batch-action primary"
-                onClick={onBatchToday}
-                title="今日購入として記録"
-              >
-                <span>⚡ 今日</span>
-              </button>
+            <button
+              class={`btn-batch-action ${isCalendarMenuOpen ? 'active' : ''}`}
+              onClick={() => setIsCalendarMenuOpen(!isCalendarMenuOpen)}
+              title="Googleカレンダー連携メニューを開く"
+              aria-label="Googleカレンダー連携メニューを開く"
+            >
+              <span>🗓️</span>
+            </button>
 
-              <button
-                class="btn-batch-action"
-                onClick={onOpenBatchDate}
-                title="日付を指定して記録"
-              >
-                <span>📅 日付</span>
-              </button>
-
-              <button
-                class={`btn-batch-action ${isCalendarMenuOpen ? 'active' : ''}`}
-                onClick={() => setIsCalendarMenuOpen(!isCalendarMenuOpen)}
-                title="Googleカレンダー連携メニュー"
-              >
-                <span>🗓️ カレンダー</span>
-              </button>
-
-              <button
-                class="btn-batch-action danger"
-                onClick={onBatchDelete}
-                title="選択したアイテムを削除"
-              >
-                <span>🗑️</span>
-              </button>
-            </div>
+            <button
+              class="btn-batch-action danger"
+              onClick={onBatchDelete}
+              title="選択したアイテムを削除する"
+              aria-label="選択したアイテムを削除する"
+            >
+              <span>🗑️</span>
+            </button>
           </div>
         </>
       )}
