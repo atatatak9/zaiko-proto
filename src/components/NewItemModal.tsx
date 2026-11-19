@@ -35,7 +35,7 @@ export function NewItemModal({
     <div class="modal-overlay" onClick={onClose}>
       <div class="bottom-sheet" onClick={(e: MouseEvent) => e.stopPropagation()}>
         <div class="sheet-header">
-          <span class="sheet-title">新規アイテムを追加</span>
+          <span class="sheet-title">アイテムを追加</span>
           <button
             class="btn-icon-mobile"
             style={{ width: '32px', height: '32px' }}
@@ -88,17 +88,17 @@ export function NewItemModal({
 
           <div class="sheet-footer">
             <button
+              type="submit"
+              class="btn-sheet-primary"
+            >
+              追加する
+            </button>
+            <button
               type="button"
               class="btn-sheet-secondary"
               onClick={onClose}
             >
               キャンセル
-            </button>
-            <button
-              type="submit"
-              class="btn-sheet-primary"
-            >
-              追加する
             </button>
           </div>
         </form>
