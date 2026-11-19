@@ -58,7 +58,7 @@ export function NewItemModal({
                 value={name}
                 required
                 autoFocus
-                onInput={(e: any) => setName(e.target.value)}
+                onInput={(e) => setName((e.target as HTMLInputElement).value)}
               />
             </div>
 
@@ -68,7 +68,7 @@ export function NewItemModal({
                   type="checkbox"
                   class="checkbox-mobile"
                   checked={recordInitial}
-                  onChange={(e: any) => setRecordInitial(e.target.checked)}
+                  onChange={(e) => setRecordInitial((e.target as HTMLInputElement).checked)}
                 />
                 <span>初回の購入日も記録する</span>
               </label>
@@ -79,7 +79,7 @@ export function NewItemModal({
                     type="date"
                     class="input-mobile"
                     value={purchaseDate}
-                    onInput={(e: any) => setPurchaseDate(e.target.value)}
+                    onInput={(e) => setPurchaseDate((e.target as HTMLInputElement).value)}
                   />
                 </div>
               )}

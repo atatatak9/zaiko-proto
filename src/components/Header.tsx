@@ -1,13 +1,12 @@
 interface HeaderProps {
   currentView: 'list' | 'detail';
   onBackToList: () => void;
-  onResetSample: () => void;
+  onResetSample?: () => void;
 }
 
 export function Header({
   currentView,
-  onBackToList,
-  onResetSample
+  onBackToList
 }: HeaderProps) {
   if (currentView === 'detail') {
     return (

@@ -66,7 +66,7 @@ export function BatchDateModal({
                 class="input-mobile"
                 value={date}
                 required
-                onInput={(e: any) => setDate(e.target.value)}
+                onInput={(e) => setDate((e.target as HTMLInputElement).value)}
               />
             </div>
           </div>

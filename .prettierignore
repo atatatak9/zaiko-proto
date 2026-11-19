@@ -1,0 +1,4 @@
+node_modules
+dist
+backup_desktop_mailer
+.devcontainer

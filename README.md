@@ -51,6 +51,15 @@ npm install
 # 開発サーバーの起動 (http://localhost:3000)
 npm run dev
 
+# 型チェック (TypeScript)
+npm run typecheck
+
+# 静的解析 (ESLint)
+npm run lint
+
+# コード整形 (Prettier)
+npm run format
+
 # プロダクションビルド
 npm run build
 

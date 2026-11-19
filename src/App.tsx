@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'preact/hooks';
 import { InventoryItem, NewItemInput } from './types';
 import * as storage from './services/storage';
-import { getTodayString } from './utils/date';
 import { useRoute, navigateToDetail, navigateToList } from './router';
 
 import { Header } from './components/Header';
@@ -87,16 +86,6 @@ export function App() {
       sortedItems.forEach(i => next.add(i.id));
       setSelectedIds(next);
     }
-  };
-
-  // 複数アイテムに「今日」を一括記録
-  const handleBatchToday = () => {
-    const ids = Array.from(selectedIds);
-    if (ids.length === 0) return;
-    const count = storage.batchAddPurchaseDate(ids, getTodayString());
-    setItems(storage.loadItems());
-    setSelectedIds(new Set());
-    showToast(`⚡ ${count} 件の購入日を今日で記録しました`);
   };
 
   // 複数アイテムに「指定日」を一括記録
