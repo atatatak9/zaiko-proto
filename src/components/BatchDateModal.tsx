@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import { InventoryItem } from '../types';
-import { getTodayString } from '../utils/date';
+import { getTodayString, isValidDateString } from '../utils/date';
 
 interface BatchDateModalProps {
   isOpen: boolean;
@@ -21,7 +21,7 @@ export function BatchDateModal({
 
   const handleSubmit = (e: Event) => {
     e.preventDefault();
-    if (!date) return;
+    if (!isValidDateString(date)) return;
     onSubmit(date);
     onClose();
   };

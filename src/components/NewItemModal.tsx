@@ -21,10 +21,11 @@ export function NewItemModal({
 
   const handleSubmit = (e: Event) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    const trimmed = name.trim();
+    if (!trimmed || trimmed.length > 100) return;
 
     onSubmit({
-      name: name.trim(),
+      name: trimmed,
       initialPurchaseDate: recordInitial ? purchaseDate : undefined
     });
 
@@ -56,6 +57,7 @@ export function NewItemModal({
                 class="input-mobile"
                 placeholder="例: シャンプー、コーヒー豆"
                 value={name}
+                maxLength={100}
                 required
                 autoFocus
                 onInput={(e) => setName((e.target as HTMLInputElement).value)}

@@ -1,4 +1,19 @@
 /**
+ * YYYY-MM-DD 形式かつ有効な日付であるかを厳格に検証 (IPA 入力値検証)
+ */
+export function isValidDateString(dateStr: string): boolean {
+  if (!dateStr || typeof dateStr !== 'string') return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+  const parts = dateStr.split('-').map(Number);
+  const d = new Date(parts[0], parts[1] - 1, parts[2]);
+  return (
+    d.getFullYear() === parts[0] &&
+    d.getMonth() === parts[1] - 1 &&
+    d.getDate() === parts[2]
+  );
+}
+
+/**
  * 今日の日付を YYYY-MM-DD 形式で取得
  */
 export function getTodayString(): string {
@@ -13,6 +28,9 @@ export function getTodayString(): string {
  * YYYY-MM-DD 文字列を Date オブジェクトに変換
  */
 export function parseDate(dateStr: string): Date {
+  if (!isValidDateString(dateStr)) {
+    return new Date(NaN);
+  }
   const [year, month, day] = dateStr.split('-').map(Number);
   return new Date(year, month - 1, day);
 }
@@ -21,7 +39,7 @@ export function parseDate(dateStr: string): Date {
  * 日付の表示用フォーマット (例: 2026/10/29)
  */
 export function formatDate(dateStr: string): string {
-  if (!dateStr) return '未記録';
+  if (!isValidDateString(dateStr)) return '未記録';
   const [y, m, d] = dateStr.split('-');
   return `${y}/${m}/${d}`;
 }
@@ -30,8 +48,9 @@ export function formatDate(dateStr: string): string {
  * 相対的な日付表現を返す (メーラーの一覧画面風: 「今日」「昨日」「3日前」「2週間前」など)
  */
 export function getRelativeDateString(dateStr: string): string {
-  if (!dateStr) return '未記録';
+  if (!isValidDateString(dateStr)) return '未記録';
   const target = parseDate(dateStr);
+  if (isNaN(target.getTime())) return '未記録';
   const today = parseDate(getTodayString());
 
   const diffMs = today.getTime() - target.getTime();

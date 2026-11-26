@@ -63,3 +63,28 @@ export function createGoogleCalendarEventUrl(items: InventoryItem[]): string {
 
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
+
+/**
+ * 安全に外部URLを新しいタブで開く (IPA / MDN Tabnabbing 対策 & URL検証)
+ * - URLスキームとホスト名を厳格に検証（GoogleカレンダーのHTTPS URLのみ許可）
+ * - Tabnabbing対策（noopener, noreferrer および window.opener = null）
+ */
+export function openSafeExternalUrl(url: string): void {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:' || parsed.hostname !== 'calendar.google.com') {
+      console.warn('Blocked opening non-whitelisted external URL:', url);
+      return;
+    }
+    const newWindow = window.open(parsed.href, '_blank', 'noopener,noreferrer');
+    if (newWindow) {
+      try {
+        newWindow.opener = null;
+      } catch {
+        // Ignore cross-origin opener restriction in some browsers
+      }
+    }
+  } catch {
+    console.warn('Invalid URL provided:', url);
+  }
+}

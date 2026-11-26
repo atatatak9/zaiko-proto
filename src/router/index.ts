@@ -12,10 +12,18 @@ export function parseRoute(): RouteState {
   const hash = window.location.hash || '#/';
   const match = hash.match(/^#\/items\/([^/?#]+)/);
   if (match) {
-    return {
-      view: 'detail',
-      itemId: decodeURIComponent(match[1])
-    };
+    try {
+      return {
+        view: 'detail',
+        itemId: decodeURIComponent(match[1])
+      };
+    } catch {
+      // Malformed URI in hash: safely fallback to list view to prevent client crash
+      return {
+        view: 'list',
+        itemId: null
+      };
+    }
   }
   return {
     view: 'list',

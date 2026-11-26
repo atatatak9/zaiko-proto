@@ -1,7 +1,61 @@
 import { InventoryItem, PurchaseRecord, NewItemInput } from '../types';
-import { getTodayString } from '../utils/date';
+import { getTodayString, isValidDateString } from '../utils/date';
 
 const STORAGE_KEY = 'zaiko_minimal_items_v2';
+const MAX_NAME_LENGTH = 100;
+
+/**
+ * アイテム名のサニタイズ・入力値検証 (IPA 入力値サニタイズ)
+ * - 前後空白の除去
+ * - 制御文字 (ASCII 0-31, 127-159) の除去
+ * - 最大100文字までの制限 (DoS / LocalStorage 枯渇防止)
+ */
+export function sanitizeName(name: string): string {
+  if (typeof name !== 'string') return '';
+  const cleaned = name.replace(/[\u0000-\u001F\u007F-\u009F]/g, '').trim();
+  return cleaned.slice(0, MAX_NAME_LENGTH);
+}
+
+/**
+ * 暗号学的に安全なランダム ID 生成 (MDN セキュア実装ガイド)
+ */
+export function generateId(): string {
+  if (typeof crypto !== 'undefined') {
+    if (typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+    if (typeof crypto.getRandomValues === 'function') {
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    }
+  }
+  return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 9);
+}
+
+/**
+ * LocalStorage データの型・スキーマ検証 (クライアント側データの整合性保護)
+ */
+function isValidPurchaseRecord(rec: unknown): rec is PurchaseRecord {
+  if (!rec || typeof rec !== 'object') return false;
+  const r = rec as Record<string, unknown>;
+  return typeof r.id === 'string' && typeof r.date === 'string' && isValidDateString(r.date);
+}
+
+function isValidInventoryItem(item: unknown): item is InventoryItem {
+  if (!item || typeof item !== 'object') return false;
+  const i = item as Record<string, unknown>;
+  return (
+    typeof i.id === 'string' &&
+    typeof i.name === 'string' &&
+    i.name.trim().length > 0 &&
+    i.name.length <= MAX_NAME_LENGTH &&
+    Array.isArray(i.purchaseHistory) &&
+    i.purchaseHistory.every(isValidPurchaseRecord) &&
+    typeof i.createdAt === 'string' &&
+    typeof i.updatedAt === 'string'
+  );
+}
 
 /**
  * 初期サンプルデータ (アイテム名と購入日のみ)
@@ -68,13 +122,6 @@ const SAMPLE_ITEMS: InventoryItem[] = [
   }
 ];
 
-export function generateId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 9);
-}
-
 export function loadItems(): InventoryItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -83,7 +130,11 @@ export function loadItems(): InventoryItem[] {
       return SAMPLE_ITEMS;
     }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : SAMPLE_ITEMS;
+    if (!Array.isArray(parsed)) {
+      return SAMPLE_ITEMS;
+    }
+    const valid = parsed.filter(isValidInventoryItem);
+    return valid.length > 0 ? valid : SAMPLE_ITEMS;
   } catch {
     return SAMPLE_ITEMS;
   }
@@ -104,8 +155,9 @@ export function addItem(input: NewItemInput): InventoryItem {
   const items = loadItems();
   const now = new Date().toISOString();
   const history: PurchaseRecord[] = [];
+  const safeName = sanitizeName(input.name);
 
-  if (input.initialPurchaseDate) {
+  if (input.initialPurchaseDate && isValidDateString(input.initialPurchaseDate)) {
     history.push({
       id: generateId(),
       date: input.initialPurchaseDate
@@ -114,7 +166,7 @@ export function addItem(input: NewItemInput): InventoryItem {
 
   const newItem: InventoryItem = {
     id: generateId(),
-    name: input.name.trim(),
+    name: safeName || '無題アイテム',
     purchaseHistory: history,
     createdAt: now,
     updatedAt: now
@@ -150,9 +202,10 @@ export function addPurchaseDate(itemId: string, date: string = getTodayString())
   const item = items.find(i => i.id === itemId);
   if (!item) return null;
 
+  const safeDate = isValidDateString(date) ? date : getTodayString();
   const newRecord: PurchaseRecord = {
     id: generateId(),
-    date
+    date: safeDate
   };
 
   item.purchaseHistory.unshift(newRecord);
@@ -171,13 +224,14 @@ export function batchAddPurchaseDate(itemIds: string[], date: string = getTodayS
   const idSet = new Set(itemIds);
   const items = loadItems();
   const now = new Date().toISOString();
+  const safeDate = isValidDateString(date) ? date : getTodayString();
   let count = 0;
 
   for (const item of items) {
     if (idSet.has(item.id)) {
       item.purchaseHistory.unshift({
         id: generateId(),
-        date
+        date: safeDate
       });
       item.purchaseHistory.sort((a, b) => b.date.localeCompare(a.date));
       item.updatedAt = now;

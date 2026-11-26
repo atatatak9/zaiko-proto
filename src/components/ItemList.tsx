@@ -1,7 +1,7 @@
 import { useState } from 'preact/hooks';
 import { InventoryItem } from '../types';
 import { getRelativeDateString } from '../utils/date';
-import { getGoogleCalendarUrl, createGoogleCalendarEventUrl } from '../utils/calendar';
+import { getGoogleCalendarUrl, createGoogleCalendarEventUrl, openSafeExternalUrl } from '../utils/calendar';
 
 interface ItemListProps {
   items: InventoryItem[];
@@ -31,13 +31,13 @@ export function ItemList({
 
   const handleOpenCalendar = () => {
     setIsCalendarMenuOpen(false);
-    window.open(getGoogleCalendarUrl(), '_blank', 'noopener,noreferrer');
+    openSafeExternalUrl(getGoogleCalendarUrl());
   };
 
   const handleAddCalendarEvent = () => {
     setIsCalendarMenuOpen(false);
     const url = createGoogleCalendarEventUrl(selectedItems);
-    window.open(url, '_blank', 'noopener,noreferrer');
+    openSafeExternalUrl(url);
   };
 
   return (
