@@ -205,7 +205,7 @@ export function ItemList({
           title="アイテムを追加する"
           aria-label="アイテムを追加する"
         >
-          <IconPlus size={24} strokeWidth={2.5} />
+          <IconPlus size={22} strokeWidth={2.5} />
         </button>
       )}
 

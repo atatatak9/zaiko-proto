@@ -93,14 +93,17 @@ export function App() {
   };
 
   const handleToggleSelectAll = () => {
-    const isAll = sortedItems.length > 0 && sortedItems.every((i) => selectedIds.has(i.id));
-    if (isAll) {
-      setSelectedIds(new Set());
-    } else {
-      const next = new Set(selectedIds);
-      sortedItems.forEach((i) => next.add(i.id));
-      setSelectedIds(next);
-    }
+    if (filteredItems.length === 0) return;
+    const isAll = filteredItems.every((i) => selectedIds.has(i.id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (isAll) {
+        filteredItems.forEach((i) => next.delete(i.id));
+      } else {
+        filteredItems.forEach((i) => next.add(i.id));
+      }
+      return next;
+    });
   };
 
   // 複数アイテムに「指定日」を一括記録

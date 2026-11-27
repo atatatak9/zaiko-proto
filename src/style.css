@@ -306,7 +306,7 @@ body {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: 90px; /* Space for FAB and Bottom Action Bar */
+  padding-bottom: 96px; /* Space for FAB and Bottom Action Bar */
 }
 
 /* Item Row (Mail list style for mobile & desktop) */
@@ -444,10 +444,10 @@ body {
 .fab-add {
   position: absolute;
   right: 18px;
-  bottom: 18px;
+  bottom: 24px;
   width: 48px;
   height: 48px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background-color: #c2e7ff;
   color: #001d35;
   border: none;
@@ -482,7 +482,7 @@ body {
 @media (min-width: 640px) {
   .fab-add {
     right: 28px;
-    bottom: 24px;
+    bottom: 32px;
     width: 52px;
     height: 52px;
     font-size: 26px;
@@ -492,7 +492,7 @@ body {
 @media (min-width: 1024px) {
   .fab-add {
     right: 36px;
-    bottom: 30px;
+    bottom: 38px;
     width: 52px;
     height: 52px;
     font-size: 26px;
