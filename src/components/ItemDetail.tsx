@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import { InventoryItem, isDefaultLabel } from '../types';
 import { formatDate, getRelativeDateString } from '../utils/date';
+import { IconPlus, IconTag, IconTrash2, IconX } from './Icons';
 
 interface ItemDetailProps {
   item: InventoryItem;
@@ -74,7 +75,10 @@ export function ItemDetail({
             <div class="detail-label-row">
               {item.label ? (
                 <div class="detail-current-label">
-                  <span class="detail-label-badge">🏷️ {item.label}</span>
+                  <span class="detail-label-badge">
+                    <IconTag size={13} style={{ marginRight: '4px' }} />
+                    {item.label}
+                  </span>
                   <button
                     type="button"
                     class="btn-label-edit"
@@ -89,7 +93,8 @@ export function ItemDetail({
                   class="btn-label-add-empty"
                   onClick={() => setIsLabelEditorOpen(!isLabelEditorOpen)}
                 >
-                  ＋ ラベルを設定
+                  <IconPlus size={14} style={{ marginRight: '4px' }} />
+                  ラベルを設定
                 </button>
               )}
             </div>
@@ -118,7 +123,10 @@ export function ItemDetail({
                         role="button"
                         tabIndex={0}
                       >
-                        <span class="chip-text">🏷️ {label}</span>
+                        <span class="chip-text">
+                          <IconTag size={12} style={{ marginRight: '4px' }} />
+                          {label}
+                        </span>
                         {isCustom && (
                           <button
                             type="button"
@@ -126,7 +134,7 @@ export function ItemDetail({
                             title={`ラベル「${label}」を削除`}
                             onClick={(e: MouseEvent) => handleDeleteLabelClick(e, label)}
                           >
-                            ✕
+                            <IconX size={11} />
                           </button>
                         )}
                       </div>
@@ -142,7 +150,8 @@ export function ItemDetail({
                         setLabelError(null);
                       }}
                     >
-                      ＋ 新しいラベル
+                      <IconPlus size={14} style={{ marginRight: '4px' }} />
+                      新しいラベル
                     </button>
                   )}
                 </div>
@@ -229,7 +238,7 @@ export function ItemDetail({
                     title="この記録を削除"
                     onClick={() => onDeleteRecord(item.id, record.id)}
                   >
-                    ✕
+                    <IconX size={14} />
                   </button>
                 </div>
               ))}
@@ -240,7 +249,8 @@ export function ItemDetail({
         {/* Danger Zone */}
         <div class="danger-zone">
           <button class="btn-delete-item-full" onClick={() => onDeleteItem(item.id)}>
-            🗑️ このアイテムを削除
+            <IconTrash2 size={16} style={{ marginRight: '6px' }} />
+            このアイテムを削除
           </button>
         </div>
       </div>

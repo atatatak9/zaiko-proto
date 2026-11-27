@@ -1,3 +1,5 @@
+import { IconArrowLeft, IconPackage } from './Icons';
+
 interface HeaderProps {
   currentView: 'list' | 'detail';
   onBackToList: () => void;
@@ -21,7 +23,7 @@ export function Header({ currentView, onBackToList }: HeaderProps) {
               padding: '0 12px'
             }}
           >
-            <span style={{ fontSize: '18px' }}>←</span>
+            <IconArrowLeft size={18} />
             <span class="back-button-label" style={{ fontSize: '14.5px', fontWeight: 500 }}>
               一覧に戻る
             </span>
@@ -35,19 +37,10 @@ export function Header({ currentView, onBackToList }: HeaderProps) {
     <header class="mobile-appbar">
       <div class="appbar-left">
         <span class="appbar-title">
+          <IconPackage size={22} color="var(--primary)" />
           <span>stocktake</span>
         </span>
       </div>
-
-      {/* <div class="appbar-right">
-        <button
-          class="btn-icon-mobile"
-          onClick={onResetSample}
-          title="初期サンプルデータを復元"
-        >
-          🔄
-        </button>
-      </div> */}
     </header>
   );
 }

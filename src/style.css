@@ -41,7 +41,15 @@ body {
 
 body {
   font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    'M PLUS 1p',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+  font-variant-numeric: tabular-nums;
   color: var(--text-main);
   background-color: var(--bg-app);
   font-size: 15px;

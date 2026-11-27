@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import { NewItemInput, isDefaultLabel } from '../types';
 import { getTodayString } from '../utils/date';
+import { IconPlus, IconTag, IconX } from './Icons';
 
 interface NewItemModalProps {
   isOpen: boolean;
@@ -80,7 +81,7 @@ export function NewItemModal({
             style={{ width: '32px', height: '32px' }}
             onClick={onClose}
           >
-            ✕
+            <IconX size={18} />
           </button>
         </div>
 
@@ -138,7 +139,10 @@ export function NewItemModal({
                       role="button"
                       tabIndex={0}
                     >
-                      <span class="chip-text">🏷️ {label}</span>
+                      <span class="chip-text">
+                        <IconTag size={12} style={{ marginRight: '4px' }} />
+                        {label}
+                      </span>
                       {isCustom && (
                         <button
                           type="button"
@@ -146,7 +150,7 @@ export function NewItemModal({
                           title={`ラベル「${label}」を削除`}
                           onClick={(e: MouseEvent) => handleDeleteLabelClick(e, label)}
                         >
-                          ✕
+                          <IconX size={11} />
                         </button>
                       )}
                     </div>
@@ -162,7 +166,8 @@ export function NewItemModal({
                       setLabelError(null);
                     }}
                   >
-                    ＋ 新しいラベル
+                    <IconPlus size={14} style={{ marginRight: '4px' }} />
+                    新しいラベル
                   </button>
                 )}
               </div>

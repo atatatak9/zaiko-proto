@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import { InventoryItem } from '../types';
 import { getTodayString, isValidDateString } from '../utils/date';
+import { IconX } from './Icons';
 
 interface BatchDateModalProps {
   isOpen: boolean;
@@ -31,7 +32,7 @@ export function BatchDateModal({ isOpen, selectedItems, onClose, onSubmit }: Bat
             style={{ width: '32px', height: '32px' }}
             onClick={onClose}
           >
-            ✕
+            <IconX size={18} />
           </button>
         </div>
 

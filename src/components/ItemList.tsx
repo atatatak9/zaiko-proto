@@ -6,6 +6,17 @@ import {
   createGoogleCalendarEventUrl,
   openSafeExternalUrl
 } from '../utils/calendar';
+import {
+  IconCalendar,
+  IconCalendarPlus,
+  IconChevronRight,
+  IconInbox,
+  IconPenLine,
+  IconPlus,
+  IconTag,
+  IconTrash2,
+  IconX
+} from './Icons';
 
 interface ItemListProps {
   items: InventoryItem[];
@@ -74,9 +85,7 @@ export function ItemList({
               >
                 <span>{label}</span>
                 <span class="chip-count">{count}</span>
-                {isSelected && (
-                  <span style={{ marginLeft: '2px', fontSize: '11px', opacity: 0.9 }}>✕</span>
-                )}
+                {isSelected && <IconX size={12} style={{ marginLeft: '2px', opacity: 0.9 }} />}
               </button>
             );
           })}
@@ -92,7 +101,7 @@ export function ItemList({
               <span>未分類</span>
               <span class="chip-count">{unclassifiedCount}</span>
               {selectedLabel === '__UNCLASSIFIED__' && (
-                <span style={{ marginLeft: '2px', fontSize: '11px', opacity: 0.9 }}>✕</span>
+                <IconX size={12} style={{ marginLeft: '2px', opacity: 0.9 }} />
               )}
             </button>
           )}
@@ -124,7 +133,9 @@ export function ItemList({
       <div class="items-list-scroll">
         {items.length === 0 ? (
           <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: '32px', marginBottom: '8px' }}>📭</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+              <IconInbox size={36} strokeWidth={1.75} color="var(--text-muted)" />
+            </div>
             <div style={{ fontSize: '15px', fontWeight: 500 }}>
               {selectedLabel ? 'このラベルのアイテムはありません' : 'アイテムがありません'}
             </div>
@@ -138,7 +149,7 @@ export function ItemList({
           items.map((item) => {
             const isChecked = selectedIds.has(item.id);
             const latest = item.purchaseHistory[0];
-            const relDate = latest ? getRelativeDateString(latest.date) : '未購入';
+            const relDate = latest ? getRelativeDateString(latest.date) : '';
             const isToday = relDate === '今日';
 
             return (
@@ -162,15 +173,24 @@ export function ItemList({
                 <div class="item-card-main">
                   <div class="item-card-row-top">
                     <span class="item-card-title">{item.name}</span>
-                    <span class={`item-card-date ${isToday ? 'is-today' : ''}`}>{relDate}</span>
+                    {relDate && (
+                      <span class={`item-card-date ${isToday ? 'is-today' : ''}`}>{relDate}</span>
+                    )}
                   </div>
                   <div class="item-card-sub">
-                    {item.label && <span class="item-card-label">🏷️ {item.label}</span>}
-                    {latest ? <span>最終購入日: {latest.date}</span> : <span>購入日未記録</span>}
+                    {item.label && (
+                      <span class="item-card-label">
+                        <IconTag size={11} style={{ marginRight: '3px' }} />
+                        {item.label}
+                      </span>
+                    )}
+                    <span>最終購入日: {latest ? latest.date : ''}</span>
                   </div>
                 </div>
 
-                <span class="item-card-arrow">›</span>
+                <span class="item-card-arrow">
+                  <IconChevronRight size={18} />
+                </span>
               </div>
             );
           })
@@ -185,7 +205,7 @@ export function ItemList({
           title="アイテムを追加する"
           aria-label="アイテムを追加する"
         >
-          <span>＋</span>
+          <IconPlus size={24} strokeWidth={2.5} />
         </button>
       )}
 
@@ -202,7 +222,16 @@ export function ItemList({
                   onClick={handleAddCalendarEvent}
                   title="選択したアイテムの購入予定日をカレンダーに追加する"
                 >
-                  <span class="calendar-menu-icon">➕</span>
+                  <span
+                    class="calendar-menu-icon"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <IconCalendarPlus size={20} color="var(--primary)" />
+                  </span>
                   <div class="calendar-menu-text">
                     <div class="calendar-menu-title">次回購入予定日を追加する</div>
                     <div class="calendar-menu-desc">
@@ -215,7 +244,16 @@ export function ItemList({
                   onClick={handleOpenCalendar}
                   title="Googleカレンダーを開く"
                 >
-                  <span class="calendar-menu-icon">📅</span>
+                  <span
+                    class="calendar-menu-icon"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <IconCalendar size={20} color="var(--primary)" />
+                  </span>
                   <div class="calendar-menu-text">
                     <div class="calendar-menu-title">Googleカレンダーを開く</div>
                     <div class="calendar-menu-desc">カレンダーのトップページ</div>
@@ -232,7 +270,7 @@ export function ItemList({
               title="購入日を記録する"
               aria-label="購入日を記録する"
             >
-              <span>📝</span>
+              <IconPenLine size={20} />
             </button>
 
             <button
@@ -241,7 +279,7 @@ export function ItemList({
               title="Googleカレンダー連携メニューを開く"
               aria-label="Googleカレンダー連携メニューを開く"
             >
-              <span>🗓️</span>
+              <IconCalendar size={20} />
             </button>
 
             <button
@@ -250,7 +288,7 @@ export function ItemList({
               title="選択したアイテムを削除する"
               aria-label="選択したアイテムを削除する"
             >
-              <span>🗑️</span>
+              <IconTrash2 size={20} />
             </button>
           </div>
         </>
