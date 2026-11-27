@@ -1,10 +1,18 @@
 import { useState } from 'preact/hooks';
 import { InventoryItem } from '../types';
 import { getRelativeDateString } from '../utils/date';
-import { getGoogleCalendarUrl, createGoogleCalendarEventUrl, openSafeExternalUrl } from '../utils/calendar';
+import {
+  getGoogleCalendarUrl,
+  createGoogleCalendarEventUrl,
+  openSafeExternalUrl
+} from '../utils/calendar';
 
 interface ItemListProps {
   items: InventoryItem[];
+  allItems: InventoryItem[];
+  labels: string[];
+  selectedLabel: string | null;
+  onSelectLabel: (label: string | null) => void;
   selectedIds: Set<string>;
   onSelectItem: (id: string) => void;
   onToggleCheck: (id: string, checked: boolean) => void;
@@ -16,6 +24,10 @@ interface ItemListProps {
 
 export function ItemList({
   items,
+  allItems,
+  labels,
+  selectedLabel,
+  onSelectLabel,
   selectedIds,
   onSelectItem,
   onToggleCheck,
@@ -25,9 +37,13 @@ export function ItemList({
   onBatchDelete
 }: ItemListProps) {
   const [isCalendarMenuOpen, setIsCalendarMenuOpen] = useState(false);
-  const isAllSelected = items.length > 0 && items.every(i => selectedIds.has(i.id));
+  const isAllSelected = items.length > 0 && items.every((i) => selectedIds.has(i.id));
   const hasSelection = selectedIds.size > 0;
-  const selectedItems = items.filter(i => selectedIds.has(i.id));
+  const selectedItems = items.filter((i) => selectedIds.has(i.id));
+
+  // 未分類アイテムのカウント
+  const unclassifiedCount = allItems.filter((i) => !i.label).length;
+  const hasUnclassified = unclassifiedCount > 0;
 
   const handleOpenCalendar = () => {
     setIsCalendarMenuOpen(false);
@@ -42,6 +58,47 @@ export function ItemList({
 
   return (
     <div class="view-container">
+      {/* Label Filter Chips Bar */}
+      <div class="label-filter-container">
+        <div class="label-filter-scroll" role="tablist" aria-label="ラベル別フィルター">
+          {labels.map((label) => {
+            const count = allItems.filter((i) => i.label === label).length;
+            const isSelected = selectedLabel === label;
+            return (
+              <button
+                key={label}
+                type="button"
+                class={`label-filter-chip ${isSelected ? 'active' : ''}`}
+                onClick={() => onSelectLabel(isSelected ? null : label)}
+                aria-pressed={isSelected}
+              >
+                <span>{label}</span>
+                <span class="chip-count">{count}</span>
+                {isSelected && (
+                  <span style={{ marginLeft: '2px', fontSize: '11px', opacity: 0.9 }}>✕</span>
+                )}
+              </button>
+            );
+          })}
+          {hasUnclassified && (
+            <button
+              type="button"
+              class={`label-filter-chip ${selectedLabel === '__UNCLASSIFIED__' ? 'active' : ''}`}
+              onClick={() =>
+                onSelectLabel(selectedLabel === '__UNCLASSIFIED__' ? null : '__UNCLASSIFIED__')
+              }
+              aria-pressed={selectedLabel === '__UNCLASSIFIED__'}
+            >
+              <span>未分類</span>
+              <span class="chip-count">{unclassifiedCount}</span>
+              {selectedLabel === '__UNCLASSIFIED__' && (
+                <span style={{ marginLeft: '2px', fontSize: '11px', opacity: 0.9 }}>✕</span>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Subheader: Select all & Order note */}
       <div class="list-subheader">
         <label class="select-all-label">
@@ -51,7 +108,13 @@ export function ItemList({
             checked={isAllSelected}
             onChange={onToggleSelectAll}
           />
-          <span>{hasSelection ? `${selectedIds.size} 件選択中` : `すべて (${items.length})`}</span>
+          <span>
+            {hasSelection
+              ? `${selectedIds.size} 件選択中`
+              : selectedLabel
+                ? `絞り込み結果 (${items.length})`
+                : `すべて (${items.length})`}
+          </span>
         </label>
 
         <span class="order-label-mobile">購入日の古い順</span>
@@ -62,11 +125,17 @@ export function ItemList({
         {items.length === 0 ? (
           <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
             <div style={{ fontSize: '32px', marginBottom: '8px' }}>📭</div>
-            <div style={{ fontSize: '15px', fontWeight: 500 }}>アイテムがありません</div>
-            <div style={{ fontSize: '12.5px', marginTop: '4px' }}>右下のボタンから追加してください</div>
+            <div style={{ fontSize: '15px', fontWeight: 500 }}>
+              {selectedLabel ? 'このラベルのアイテムはありません' : 'アイテムがありません'}
+            </div>
+            {!selectedLabel && (
+              <div style={{ fontSize: '12.5px', marginTop: '6px' }}>
+                右下の＋ボタンから追加してください
+              </div>
+            )}
           </div>
         ) : (
-          items.map(item => {
+          items.map((item) => {
             const isChecked = selectedIds.has(item.id);
             const latest = item.purchaseHistory[0];
             const relDate = latest ? getRelativeDateString(latest.date) : '未購入';
@@ -86,28 +155,18 @@ export function ItemList({
                     onToggleCheck(item.id, !isChecked);
                   }}
                 >
-                  <input
-                    type="checkbox"
-                    class="checkbox-mobile"
-                    checked={isChecked}
-                    readOnly
-                  />
+                  <input type="checkbox" class="checkbox-mobile" checked={isChecked} readOnly />
                 </div>
 
                 {/* Main Card Body */}
                 <div class="item-card-main">
                   <div class="item-card-row-top">
                     <span class="item-card-title">{item.name}</span>
-                    <span class={`item-card-date ${isToday ? 'is-today' : ''}`}>
-                      {relDate}
-                    </span>
+                    <span class={`item-card-date ${isToday ? 'is-today' : ''}`}>{relDate}</span>
                   </div>
                   <div class="item-card-sub">
-                    {latest ? (
-                      <span>最終購入日: {latest.date}</span>
-                    ) : (
-                      <span>購入日未記録</span>
-                    )}
+                    {item.label && <span class="item-card-label">🏷️ {item.label}</span>}
+                    {latest ? <span>最終購入日: {latest.date}</span> : <span>購入日未記録</span>}
                   </div>
                 </div>
 
@@ -135,10 +194,7 @@ export function ItemList({
         <>
           {isCalendarMenuOpen && (
             <>
-              <div
-                class="calendar-menu-backdrop"
-                onClick={() => setIsCalendarMenuOpen(false)}
-              />
+              <div class="calendar-menu-backdrop" onClick={() => setIsCalendarMenuOpen(false)} />
               <div class="calendar-menu-popover">
                 <div class="calendar-menu-header">Googleカレンダー連携</div>
                 <button
@@ -149,7 +205,9 @@ export function ItemList({
                   <span class="calendar-menu-icon">➕</span>
                   <div class="calendar-menu-text">
                     <div class="calendar-menu-title">次回購入予定日を追加する</div>
-                    <div class="calendar-menu-desc">{selectedItems.length}件のアイテム予定を作成</div>
+                    <div class="calendar-menu-desc">
+                      {selectedItems.length}件のアイテム予定を作成
+                    </div>
                   </div>
                 </button>
                 <button

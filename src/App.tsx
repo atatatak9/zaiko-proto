@@ -12,6 +12,8 @@ import { BatchDateModal } from './components/BatchDateModal';
 export function App() {
   const route = useRoute();
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [labels, setLabels] = useState<string[]>([]);
+  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -19,8 +21,10 @@ export function App() {
   const [isBatchDateModalOpen, setIsBatchDateModalOpen] = useState(false);
 
   useEffect(() => {
-    const loaded = storage.loadItems();
-    setItems(loaded);
+    const loadedItems = storage.loadItems();
+    const loadedLabels = storage.loadLabels();
+    setItems(loadedItems);
+    setLabels(loadedLabels);
   }, []);
 
   const showToast = (msg: string) => {
@@ -44,10 +48,21 @@ export function App() {
     return result;
   }, [items]);
 
+  // ラベルによるフィルタリング
+  const filteredItems = useMemo(() => {
+    if (selectedLabel === null) {
+      return sortedItems;
+    }
+    if (selectedLabel === '__UNCLASSIFIED__') {
+      return sortedItems.filter((i) => !i.label);
+    }
+    return sortedItems.filter((i) => i.label === selectedLabel);
+  }, [sortedItems, selectedLabel]);
+
   // 現在アクティブなアイテム (URLハッシュから判定)
   const activeItem = useMemo(() => {
     if (route.view !== 'detail' || !route.itemId) return null;
-    return items.find(i => i.id === route.itemId) || null;
+    return items.find((i) => i.id === route.itemId) || null;
   }, [items, route]);
 
   // 存在しないアイテム詳細URLの場合は一覧へフォールバック
@@ -69,7 +84,7 @@ export function App() {
 
   // チェック操作
   const handleToggleCheck = (id: string, checked: boolean) => {
-    setSelectedIds(prev => {
+    setSelectedIds((prev) => {
       const next = new Set(prev);
       if (checked) next.add(id);
       else next.delete(id);
@@ -78,12 +93,12 @@ export function App() {
   };
 
   const handleToggleSelectAll = () => {
-    const isAll = sortedItems.length > 0 && sortedItems.every(i => selectedIds.has(i.id));
+    const isAll = sortedItems.length > 0 && sortedItems.every((i) => selectedIds.has(i.id));
     if (isAll) {
       setSelectedIds(new Set());
     } else {
       const next = new Set(selectedIds);
-      sortedItems.forEach(i => next.add(i.id));
+      sortedItems.forEach((i) => next.add(i.id));
       setSelectedIds(next);
     }
   };
@@ -130,13 +145,13 @@ export function App() {
 
   // 単一アイテム削除 (詳細画面の最下部から)
   const handleDeleteItem = (itemId: string) => {
-    const target = items.find(i => i.id === itemId);
+    const target = items.find((i) => i.id === itemId);
     if (!confirm(`「${target?.name}」を削除しますか？`)) return;
 
     storage.deleteItem(itemId);
     const updated = storage.loadItems();
     setItems(updated);
-    setSelectedIds(prev => {
+    setSelectedIds((prev) => {
       const next = new Set(prev);
       next.delete(itemId);
       return next;
@@ -145,11 +160,48 @@ export function App() {
     showToast('アイテムを削除しました');
   };
 
+  // ラベル追加
+  const handleAddLabel = (name: string) => {
+    const res = storage.addLabel(name);
+    if (res.success) {
+      setLabels(res.labels);
+      showToast(`ラベル「${name}」を追加しました`);
+    }
+    return res;
+  };
+
+  // ラベル削除 (紐付くアイテムは未分類になる)
+  const handleDeleteLabel = (name: string) => {
+    if (
+      !confirm(
+        `ラベル「${name}」を削除しますか？\n（このラベルが設定されていたアイテムは「未分類」になります）`
+      )
+    ) {
+      return;
+    }
+    const res = storage.deleteLabel(name);
+    setLabels(res.labels);
+    setItems(storage.loadItems());
+    if (selectedLabel === name) {
+      setSelectedLabel(null);
+    }
+    showToast(`ラベル「${name}」を削除しました`);
+  };
+
+  // アイテムのラベル更新
+  const handleUpdateItemLabel = (itemId: string, label?: string) => {
+    storage.updateItemLabel(itemId, label);
+    setItems(storage.loadItems());
+    showToast(label ? `ラベルを「${label}」に設定しました` : 'ラベルを解除しました');
+  };
+
   // サンプルデータ復元
   const handleResetSample = () => {
     if (!confirm('初期サンプルデータにリセットしますか？')) return;
     const reset = storage.resetToSampleData();
     setItems(reset);
+    setLabels(storage.loadLabels());
+    setSelectedLabel(null);
     setSelectedIds(new Set());
     navigateToList();
     showToast('サンプルデータを復元しました');
@@ -165,7 +217,11 @@ export function App() {
 
       {route.view === 'list' ? (
         <ItemList
-          items={sortedItems}
+          items={filteredItems}
+          allItems={sortedItems}
+          labels={labels}
+          selectedLabel={selectedLabel}
+          onSelectLabel={setSelectedLabel}
           selectedIds={selectedIds}
           onSelectItem={handleSelectItem}
           onToggleCheck={handleToggleCheck}
@@ -178,6 +234,10 @@ export function App() {
         activeItem && (
           <ItemDetail
             item={activeItem}
+            labels={labels}
+            onUpdateLabel={handleUpdateItemLabel}
+            onAddLabel={handleAddLabel}
+            onDeleteLabel={handleDeleteLabel}
             onDeleteRecord={handleDeleteRecord}
             onDeleteItem={handleDeleteItem}
           />
@@ -187,22 +247,21 @@ export function App() {
       {/* Modals */}
       <NewItemModal
         isOpen={isNewModalOpen}
+        labels={labels}
         onClose={() => setIsNewModalOpen(false)}
         onSubmit={handleCreateNewItem}
+        onAddLabel={handleAddLabel}
+        onDeleteLabel={handleDeleteLabel}
       />
 
       <BatchDateModal
         isOpen={isBatchDateModalOpen}
-        selectedItems={items.filter(i => selectedIds.has(i.id))}
+        selectedItems={items.filter((i) => selectedIds.has(i.id))}
         onClose={() => setIsBatchDateModalOpen(false)}
         onSubmit={handleBatchCustomDate}
       />
 
-      {toastMessage && (
-        <div class="mobile-toast">
-          {toastMessage}
-        </div>
-      )}
+      {toastMessage && <div class="mobile-toast">{toastMessage}</div>}
     </div>
   );
 }

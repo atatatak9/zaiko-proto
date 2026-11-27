@@ -6,11 +6,7 @@ export function isValidDateString(dateStr: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
   const parts = dateStr.split('-').map(Number);
   const d = new Date(parts[0], parts[1] - 1, parts[2]);
-  return (
-    d.getFullYear() === parts[0] &&
-    d.getMonth() === parts[1] - 1 &&
-    d.getDate() === parts[2]
-  );
+  return d.getFullYear() === parts[0] && d.getMonth() === parts[1] - 1 && d.getDate() === parts[2];
 }
 
 /**

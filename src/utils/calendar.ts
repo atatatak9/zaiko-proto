@@ -31,7 +31,7 @@ export function createGoogleCalendarEventUrl(items: InventoryItem[]): string {
   // 詳細の生成 (アイテム名と最終購入日のリスト)
   const detailLines: string[] = [
     '【購入予定アイテム】',
-    ...items.map(item => {
+    ...items.map((item) => {
       const latest = item.purchaseHistory[0];
       const dateStr = latest ? latest.date : '未記録';
       return `・${item.name}（最終購入日: ${dateStr}）`;
